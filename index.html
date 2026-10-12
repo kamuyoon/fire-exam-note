@@ -310,6 +310,23 @@ body.gated #app{padding-bottom:0}
 .retry-row{margin:12px 0 4px}
 .retry-row .pill{display:inline-flex;gap:6px;align-items:center}
 .retry-row .ic{width:18px;height:18px}
+/* 앱 잠금 퀴즈 */
+body.lock-mode #tabbar{display:none}
+body.lock-mode #app{padding-bottom:20px}
+.lk{min-height:100vh;min-height:100dvh;background:radial-gradient(70% 40% at 50% 0%,rgba(255,106,26,.35) 0%,rgba(255,106,26,0) 70%),linear-gradient(170deg,#2b1911 0%,#1a1412 50%,#110d0b 100%);padding:calc(env(safe-area-inset-top) + 18px) 14px 30px}
+.lk-top{display:flex;align-items:center;justify-content:center;gap:8px;color:#fff;font-size:17px;margin:6px 0 16px}
+.lk-top .ic{color:var(--ember);width:24px;height:24px}
+.lk-top b{color:var(--gold)}
+.lk-card{margin:0;padding:18px 16px}
+.lk-pass{text-align:center;padding:30px 20px}
+.lk-pass h3{font-size:22px;margin:10px 0 6px}
+.lk-ok{width:64px;height:64px;margin:0 auto;border-radius:20px;background:linear-gradient(135deg,#2ec27e,#13a067);color:#fff;display:flex;align-items:center;justify-content:center}
+.lk-ok .ic{width:36px;height:36px}
+.lk-guide summary{cursor:pointer;font-size:14px;font-weight:700;color:var(--ember);padding:6px 0}
+.lk-guide ol{padding-left:18px;margin:8px 0;font-size:13.5px;line-height:1.7}
+.lk-guide li{margin-bottom:6px}
+.lk-guide code{background:#f3eee7;border-radius:5px;padding:1px 5px;font-size:12px;word-break:break-all}
+.lk-apps{list-style:none;padding:0;margin:0;font-size:12.5px;line-height:1.8}
 /* 화면 전환 */
 #view{touch-action:pan-y}
 .tabs,.pills,.qstrip{touch-action:pan-x}
@@ -863,6 +880,7 @@ function render(keep){
   const tab=TABMAP[p]||'solve';
   document.querySelectorAll('#tabbar a').forEach(a=>a.classList.toggle('on',a.dataset.t===tab));
   document.body.classList.toggle('quiz-mode',p==='quiz');
+  document.body.classList.toggle('lock-mode',p==='unlock');
 }
 const rerender=()=>render(true);
 const TOPPAGES=['home','solve','wrong','stats','settings'];
@@ -1494,7 +1512,7 @@ PAGES.settings=()=>{
   const user=LS.get('fx_data',{});
   return hero(topBar('설정',{back:false}),'slim')
   +accountCard()+adminCards()+`<div class="card"><h4>내 정보</h4><label class="field">닉네임<input value="${esc(S.nickname)}" placeholder="수험생" onchange="S.nickname=this.value.trim();touch('nick');save()"></label><label class="field">목표 시험일<input type="date" value="${esc(S.examDate)}" onchange="S.examDate=this.value;touch('examDate');save()"></label></div>
-  ${installCard(false)}<div class="card"><h4>오프라인 저장</h4><p class="muted" style="margin:0 0 12px;font-size:14px">문제 이미지를 폰에 미리 받아두면 인터넷 없이도 풀 수 있어요 (약 3MB)</p><button class="pill b" onclick="cacheAll(this)">전체 문제 오프라인 저장</button></div>${ME.m&&ME.m.is_admin?`<div class="card"><h4>기출 데이터</h4><p class="muted" style="margin:0 0 12px;font-size:14px">과목 ${D.subjects.length} · 회차 ${D.exams.length} · 문제 ${Q.length}</p>
+  ${installCard(false)}${lockCard()}<div class="card"><h4>오프라인 저장</h4><p class="muted" style="margin:0 0 12px;font-size:14px">문제 이미지를 폰에 미리 받아두면 인터넷 없이도 풀 수 있어요 (약 3MB)</p><button class="pill b" onclick="cacheAll(this)">전체 문제 오프라인 저장</button></div>${ME.m&&ME.m.is_admin?`<div class="card"><h4>기출 데이터</h4><p class="muted" style="margin:0 0 12px;font-size:14px">과목 ${D.subjects.length} · 회차 ${D.exams.length} · 문제 ${Q.length}</p>
     <div class="row-btns"><span class="pill filebtn">기출 데이터 불러오기<input type="file" accept=".json,.js,application/json" onchange="importData(this)"></span>${(user.exams||[]).length||(user.subjects||[]).length?`<button class="pill gr" onclick="clearUserData()">불러온 데이터 삭제</button>`:''}<a class="pill w" href="#toc">목차·코드표</a></div><div class="msg" id="dmsg"></div></div>`:''}
   <div class="card"><h4>학습 기록</h4><p class="muted" style="margin:0 0 12px;font-size:14px">누적 풀이 ${nAtt}회 · 오답 ${Q.filter(q=>isWrong(q.id)).length}문항 · 메모 ${S.memos.length}</p>
     <div class="row-btns"><button class="pill b" onclick="exportBackup()">백업 내보내기</button><span class="pill b filebtn">백업 불러오기<input type="file" accept=".json" onchange="importBackup(this)"></span><button class="pill r" onclick="resetAll()">기록 초기화</button></div><div class="msg" id="bmsg"></div></div>
@@ -1764,6 +1782,61 @@ PAGES.home=()=>{
   +(sch.length||S.examDate?`<div class="sec">시험 일정</div><ul class="sched">${S.examDate?`<li><b>내 목표 시험</b><span>${S.examDate}</span></li>`:''}${sch.map(s=>`<li><b>${esc(s.name)}</b><span>${esc(s.date||'미정')}</span></li>`).join('')}</ul>`:'')
   +`<div style="height:24px"></div>`;
 };
+
+/* ================= 앱 잠금 퀴즈 (아이폰 단축어 자동화 연동) ================= */
+// 단축어 자동화가 인스타·유튜브 등을 열 때 #unlock/<앱> 으로 이 화면을 연다.
+// 맞히면 '소방기출 통과' 단축어를 실행 → 통과 시각 기록 + 원래 앱 열기.
+const LOCK_APPS={instagram:['인스타그램','instagram://'],youtube:['유튜브','youtube://'],chrome:['크롬','googlechrome://'],naver:['네이버','naversearchapp://'],kakaotalk:['카카오톡','kakaotalk://'],tiktok:['틱톡','tiktok://'],x:['X(트위터)','twitter://'],netflix:['넷플릭스','nflx://']};
+const PASS_SHORTCUT='소방기출 통과';
+const LOCK={app:'',qid:'',chosen:null,tried:0,passed:false};
+const lockOn=()=>LS.get('fx_lock_on',true);
+function lockPickQ(){
+  const pool=Q.filter(q=>q.choices&&!q.choiceImg);
+  const wrongs=pool.filter(q=>isWrong(q.id));
+  const src=wrongs.length&&Math.random()<.35?wrongs:pool;   // 가끔은 내 오답에서 출제
+  let q;do{q=src[Math.floor(Math.random()*src.length)]}while(src.length>1&&q.id===LOCK.qid);
+  LOCK.qid=q.id;LOCK.chosen=null;
+}
+function lockReturn(){
+  const sch=(LOCK_APPS[LOCK.app]||['',''])[1];
+  location.href=`shortcuts://run-shortcut?name=${encodeURIComponent(PASS_SHORTCUT)}&input=text&text=${encodeURIComponent(sch||'')}`;
+}
+PAGES.unlock=(app='')=>{
+  if(LOCK.app!==app){LOCK.app=app;LOCK.qid='';LOCK.tried=0;LOCK.passed=false}
+  const name=(LOCK_APPS[app]||[app||'앱'])[0];
+  const head=`<div class="lk-top">${ic('fire')}<b>${esc(name)}</b> 열기 전에 한 문제!</div>`;
+  if(!lockOn()||!Q.length){setTimeout(lockReturn,300);return `<div class="lk">${head}<div class="card lk-card"><p class="muted" style="margin:0">앱 잠금 퀴즈가 꺼져 있어요. 바로 돌아갑니다.</p><button class="btn full" style="margin-top:12px" onclick="lockReturn()">${esc(name)}(으)로 돌아가기</button></div></div>`}
+  if(LOCK.passed)return `<div class="lk">${head}<div class="card lk-card lk-pass"><div class="lk-ok">${ic('check')}</div><h3>통과! 잘했어요</h3><p class="muted">${LOCK.tried>1?`${LOCK.tried}번째 문제에서 맞혔어요.`:'한 번에 맞혔어요.'} 15분 동안은 다시 묻지 않아요.</p><button class="btn full" onclick="lockReturn()">${esc(name)}(으)로 돌아가기</button></div></div>`;
+  if(!LOCK.qid||!QI[LOCK.qid]){lockPickQ();LOCK.tried++}
+  const q=QI[LOCK.qid],ans=answers(q),c=LOCK.chosen,rev=c!=null;
+  const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
+  const rows=q.choices.map((t,i)=>{const n=i+1;let cl='';if(rev){if(ans.includes(n))cl=' correct';else if(c===n)cl=' wrong'}return `<button class="crow${cl}" onclick="lockChoose(${n})"><span class="cn">${NUM[i]}</span><span class="ct">${fmt(t)}</span></button>`}).join('');
+  let h=`<div class="lk">${head}<div class="card lk-card"><div class="qsrc">${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번 · ${LOCK.tried}번째 문제</div><h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}<div class="choices">${rows}</div>`;
+  if(rev&&!ans.includes(c))h+=`<div class="verdict no">${ic('x')}오답<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')} · 오답노트에 담았어요</span></div>${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}<button class="btn full" style="margin-top:14px" onclick="LOCK.qid='';rerender()">다음 문제 풀기</button>`;
+  return h+`</div></div>`;
+};
+function lockChoose(n){
+  if(LOCK.chosen!=null)return;
+  const q=QI[LOCK.qid];LOCK.chosen=n;
+  const ok=record(q.id,n,'lock');save();
+  if(ok){LOCK.passed=true;rerender();setTimeout(lockReturn,1200)}else rerender();
+}
+function lockCard(){
+  const on=lockOn(),base=location.href.split('#')[0];
+  const apps=Object.entries(LOCK_APPS).map(([k,[n]])=>`<li><b>${esc(n)}</b> <code>${esc(base)}#unlock/${k}</code></li>`).join('');
+  return `<div class="card"><h4>앱 잠금 퀴즈 <span class="muted" style="font-size:12px;font-weight:500">아이폰</span></h4>
+    <div class="switch-row" style="margin:4px 0 8px"><span style="flex:1;font-size:14px;color:var(--sub)">인스타·유튜브 등을 열 때 문제를 맞혀야 열리게</span><button class="sw ${on?'on':''}" onclick="LS.set('fx_lock_on',${!on});rerender()" aria-label="앱 잠금 퀴즈"><i></i></button></div>
+    <details class="lk-guide"><summary>설정 방법 (처음 한 번)</summary>
+    <ol>
+      <li>이 앱을 <b>Safari</b>에서 열고 로그인해 두세요. (문제는 Safari로 열립니다)</li>
+      <li><b>단축어</b> 앱 → 오른쪽 위 <b>+</b> → 이름 <b>${PASS_SHORTCUT}</b> 로 새 단축어:<br>① <b>텍스트</b> 동작에 <b>현재 날짜</b> 넣기 → ② <b>파일 저장</b> (저장 위치 묻기 끄기, 경로 <code>/fx_pass.txt</code>, 덮어쓰기 켜기) → ③ <b>URL 열기</b>에 <b>단축어 입력</b> 넣기</li>
+      <li><b>자동화</b> 탭 → <b>+</b> → <b>앱</b> → 잠글 앱(인스타·유튜브 등) 선택, <b>열려 있음</b>, <b>즉시 실행</b> → 새 단축어:<br>① <b>파일 가져오기</b> <code>/fx_pass.txt</code> (찾지 못하면 오류 끄기) → ② <b>날짜 사이의 시간 가져오기</b>: 파일 내용 ~ 현재 날짜, 단위 <b>분</b> → ③ <b>만약</b> 결과가 <b>15보다 큼</b> → <b>URL 열기</b>: 아래 앱별 주소</li>
+      <li>처음 한 번 <b>${PASS_SHORTCUT}</b> 단축어를 직접 실행해서 <code>fx_pass.txt</code> 파일을 만들어 두세요.</li>
+      <li>Safari는 잠그지 마세요 (문제 화면이 Safari라 무한 반복돼요). 인터넷을 막고 싶으면 평소 크롬을 쓰고 크롬을 잠그세요.</li>
+    </ol>
+    <p style="margin:8px 0 4px;font-size:13px;font-weight:700">앱별 주소</p><ul class="lk-apps">${apps}</ul>
+    <button class="pill w" style="margin-top:8px" onclick="location.hash='unlock/instagram'">미리 해보기</button></details></div>`;
+}
 
 /* ================= boot ================= */
 $('#tabbar').innerHTML=[['home','#home','home','홈'],['solve','#solve','edit','문제풀이'],['wrong','#wrong','book','오답노트'],['stats','#stats','chart','통계'],['settings','#settings','gear','설정']]
