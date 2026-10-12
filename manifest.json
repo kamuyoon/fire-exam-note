@@ -1,0 +1,16 @@
+{
+  "name": "소방 기출노트",
+  "short_name": "소방기출",
+  "description": "소방 공채 기출 풀이·오답노트·회독",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fbfbf5",
+  "theme_color": "#a9d8cf",
+  "lang": "ko",
+  "icons": [
+    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}
