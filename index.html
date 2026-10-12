@@ -916,7 +916,7 @@ window.addEventListener('hashchange',()=>{
 function goBack(){if(history.length>1)history.back();else location.hash='home'}
 
 /* ================= ui parts ================= */
-const topBar=(title,o={})=>`<div class="topbar">${o.back===false?'':`<button class="back" onclick="goBack()" aria-label="뒤로">${ic('back')}</button>`}<h1>${esc(title)}</h1>${o.right?`<div class="right">${o.right}</div>`:''}</div>`;
+const topBar=(title,o={})=>`<div class="topbar">${o.back===false?'':`<button class="back" onclick="${o.backHref?`location.hash='${o.backHref}'`:'goBack()'}" aria-label="뒤로">${ic('back')}</button>`}<h1>${esc(title)}</h1>${o.right?`<div class="right">${o.right}</div>`:''}</div>`;
 const hero=(inner,cls='')=>`<header class="hero ${cls}">${inner}</header>`;
 const tabs=(list,cur,href)=>`<div class="tabs">${list.map(([k,l])=>`<a class="tab ${k===cur?'on':''}" href="${href(k)}">${l}</a>`).join('')}</div>`;
 const pills=(list,cur,href)=>`<div class="pills">${list.map(([k,l])=>`<a class="pl ${k===cur?'on':''}" href="${href(k)}">${esc(l)}</a>`).join('')}</div>`;
@@ -959,8 +959,8 @@ PAGES.solve=()=>{
 
 /* ================= pick ================= */
 function growRow(href,name,info,qs,cls=''){
-  const a=agg(qs);
-  return `<a class="grow ${cls}" href="${href}"><div class="gm"><b>${name}</b><small>${info}</small><div class="mbar"><i style="width:${qs.length?a.solved/qs.length*100:0}%"></i></div></div><span class="gbadge ${a.n?'':'none'}">${a.n?pct(a.rate):'미풀이'}</span></a>`;
+  const lr=latestRate(qs);
+  return `<a class="grow ${cls}" href="${href}"><div class="gm"><b>${name}</b><small>${info}${lr.n?` · 정답률 ${pct(lr.rate)}`:''}</small><div class="mbar"><i style="width:${qs.length?lr.n/qs.length*100:0}%"></i></div></div><span class="gbadge ${lr.n?'':'none'}">${lr.n?`${lr.n}/${qs.length}`:'미풀이'}</span></a>`;
 }
 PAGES.pick=(type='exam',sub='')=>{
   if(type==='exam')return roundsPage(sub);
@@ -1009,8 +1009,6 @@ PAGES.group=(type,key)=>{
     const rows=keys.map(k=>{const g=qs.filter(q=>hasCode(q,k)),ga=agg(g);return{k,g,ga}}).filter(r=>r.ga.n).sort((x,y)=>(1-y.ga.rate)-(1-x.ga.rate)||y.ga.wrong-x.ga.wrong);
     if(rows.length)h+=`<div class="card"><h4>취약 ${lv===1?'단원':'세부단원'}</h4>${rows.slice(0,6).map(r=>`<a class="wk" href="#group/${lv===1?'chapter':'section'}/${enc(r.k)}"><span>${esc(groupName('code',r.k))}</span><span>오답률 <b>${pct(1-r.ga.rate)}</b> · ${r.ga.wrong}/${r.ga.n}</span></a>`).join('')}</div>`;
   }
-  h+=`<div class="subhead">문항 목록</div>`;
-  h+=qs.length?qs.map((q,i)=>{const st=qstat(q.id);return `<div class="qrow" ${d} onclick="openList(this.dataset.t,this.dataset.k,${i})"><span class="dot ${st.last?(st.last.ok?'ok':'no'):''}"></span><div class="qm"><b>${esc(qLabel(q))}</b><p>${esc(plain(q.q)||'(본문 미등록)')}</p></div><span class="qc">${st.n?`${st.ok}/${st.n}`:''}</span></div>`}).join(''):'<p class="empty">문항이 없습니다</p>';
   return h;
 };
 AFTER.group=growAll;
@@ -1112,7 +1110,7 @@ function finish(sid,force){
       (S.rounds[rk]=S.rounds[rk]||[]).push({t:now(),ok,n:s.ids.length,score:ok*2});
     }
   }
-  s.done=true;s.temp=false;s.updated=now();save();location.hash='result/'+sid;
+  s.done=true;s.temp=false;s.updated=now();save();location.replace('#result/'+sid);
 }
 function quitSession(sid){dropSession(sid);save();location.hash='solve'}
 function toggleMark(id){touch('m:'+id);S.marks[id]?delete S.marks[id]:S.marks[id]=1;save();rerender()}
@@ -1285,6 +1283,13 @@ async function resetRound(key){
 }
 
 /* ================= result ================= */
+function sessionHome(s){
+  if(s.kind==='wrong')return ['#wrong','오답노트로 돌아가기'];
+  if(s.kind==='examsub'){const q=QI[s.ids[0]];return [`#pick/exam/${q?q.subject:''}`,'회차 목록으로 돌아가기']}
+  if(s.kind==='omr')return ['#omr','채점 목록으로 돌아가기'];
+  if(s.kind==='round')return ['#rounds','회독 현황으로 돌아가기'];
+  return ['#solve','문제풀이로 돌아가기'];
+}
 PAGES.result=sid=>{
   const s=S.sessions[sid];if(!s)return hero(topBar('결과'),'slim')+'<p class="empty">결과를 찾을 수 없습니다</p>';
   const rows=s.ids.map((id,i)=>{const q=QI[id],c=s.ans[id];return{id,i,q,c,ok:!!q&&c!=null&&answers(q).includes(+c)}});
@@ -1293,10 +1298,14 @@ PAGES.result=sid=>{
   const cut=oneSub?EXAM[qs[0].exam]?.cutline:null,score=nOk*2;
   const ch={};rows.filter(r=>r.q&&r.c!=null).forEach(r=>qChapters(r.q).forEach(k=>{ch[k]=ch[k]||{n:0,w:0};ch[k].n++;if(!r.ok)ch[k].w++}));
   const weak=Object.entries(ch).filter(([,v])=>v.w).sort((a,b)=>b[1].w-a[1].w||b[1].w/b[1].n-a[1].w/a[1].n);
-  let h=hero(topBar(s.title)+`<div class="score">${oneSub?`<b>${nOk*2}점</b>`:`<b>${nOk*2}점</b>`}<span>${s.ids.length}문항 중 ${nOk}개 정답${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
+  const [homeHref,homeLabel]=sessionHome(s),isWrong=s.kind==='wrong';
+  if(isWrong)return hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk} / ${s.ids.length}</b><span>맞힌 문제${nAns<s.ids.length?` · 안 푼 문제 ${s.ids.length-nAns}`:''}</span></div>`,'slim')
+    +`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`
+    +`<div class="card"><h4>문항별 결과</h4><div class="rnums">${rows.map(r=>`<a class="${r.c==null?'na':r.ok?'ok':'no'}" href="javascript:void 0" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}${r.c==null?'':r.ok?' O':' X'}</a>`).join('')}</div></div>`;
+  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk*2}점</b><span>${s.ids.length}문항 중 ${nOk}개 정답${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
   const rk=roundKey(s),rl=rk&&S.rounds[rk];
   if(rl&&rl.length)h+=`<div class="card" style="display:flex;align-items:center;gap:12px"><div class="stars" style="margin:0">${starSVG(rl.length,rl[rl.length-1].score,rl[rl.length-1].n?rl[rl.length-1].ok/rl[rl.length-1].n:1)}</div><div><b>${rl.length}회독 완료</b><br><a class="link" style="font-size:14px" href="#pick/exam/${rk.split('~')[1]}">회차별 기록 보기</a></div></div>`;
-  h+=`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div></div>`;
+  h+=`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`;
   if(oneSub&&AREAS[qs[0].subject]){const fr=focusRows(qs[0].subject,s.ans);h+=focusTop(fr,'이번 풀이 기준 집중할 영역')}
   if(weak.length)h+=`<div class="card"><h4>이번 풀이에서 틀린 단원</h4>${weak.map(([k,v])=>`<a class="wk" href="#group/chapter/${enc(k)}"><span>${esc(groupName('code',k))}</span><span><b>${v.w}</b> / ${v.n}문항</span></a>`).join('')}</div>`;
   h+=`<div class="card"><h4>문항별 결과</h4><div class="rnums">${rows.map(r=>`<a class="${r.c==null?'na':r.ok?'ok':'no'}" href="javascript:void 0" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}${r.c==null?'':r.ok?' O':' X'}</a>`).join('')}</div></div>`;
@@ -1729,12 +1738,12 @@ function studyStreak(){
 }
 function todayStat(){
   const t=ymd(now());let n=0,ok=0;
-  Object.values(S.attempts).forEach(a=>a.forEach(x=>{if(ymd(x.t)===t){n++;if(x.ok)ok++}}));
+  Object.values(S.attempts).forEach(a=>a.forEach(x=>{if(ymd(x.t)===t&&x.src!=='wrong'){n++;if(x.ok)ok++}}));
   return{n,ok};
 }
 PAGES.home=()=>{
   const [k,t]=todayQuote(),d=nextExamDate(),dd=d?Math.ceil((d-now())/864e5):null,st=todayStat(),sk=studyStreak(),dt=new Date();
-  const live=liveSessions();
+  const live=liveSessions().filter(s=>s.kind!=='wrong');
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],['집중공략','#stats/focus','fire','c1'],
     ['회독 현황','#rounds','refresh','c3'],['빈출 단원','#freq','chart','c4'],['요약노트','#summary','star','c1'],
