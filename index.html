@@ -1787,7 +1787,6 @@ PAGES.home=()=>{
 // 단축어 자동화가 인스타·유튜브 등을 열 때 #unlock/<앱> 으로 이 화면을 연다.
 // 맞히면 '소방기출 통과' 단축어를 실행 → 통과 시각 기록 + 원래 앱 열기.
 const LOCK_APPS={instagram:['인스타그램','instagram://'],youtube:['유튜브','youtube://'],chrome:['크롬','googlechrome://'],naver:['네이버','naversearchapp://'],kakaotalk:['카카오톡','kakaotalk://'],tiktok:['틱톡','tiktok://'],x:['X(트위터)','twitter://'],netflix:['넷플릭스','nflx://']};
-const PASS_SHORTCUT='소방기출 통과';
 const LOCK={app:'',qid:'',chosen:null,tried:0,passed:false};
 const lockOn=()=>LS.get('fx_lock_on',true);
 function lockPickQ(){
@@ -1799,7 +1798,7 @@ function lockPickQ(){
 }
 function lockReturn(){
   const sch=(LOCK_APPS[LOCK.app]||['',''])[1];
-  location.href=`shortcuts://run-shortcut?name=${encodeURIComponent(PASS_SHORTCUT)}&input=text&text=${encodeURIComponent(sch||'')}`;
+  if(sch)location.href=sch;else location.hash='home';
 }
 PAGES.unlock=(app='')=>{
   if(LOCK.app!==app){LOCK.app=app;LOCK.qid='';LOCK.tried=0;LOCK.passed=false}
@@ -1826,13 +1825,20 @@ function lockCard(){
   const apps=Object.entries(LOCK_APPS).map(([k,[n]])=>`<li><b>${esc(n)}</b> <code>${esc(base)}#unlock/${k}</code></li>`).join('');
   return `<div class="card"><h4>앱 잠금 퀴즈 <span class="muted" style="font-size:12px;font-weight:500">아이폰</span></h4>
     <div class="switch-row" style="margin:4px 0 8px"><span style="flex:1;font-size:14px;color:var(--sub)">인스타·유튜브 등을 열 때 문제를 맞혀야 열리게</span><button class="sw ${on?'on':''}" onclick="LS.set('fx_lock_on',${!on});rerender()" aria-label="앱 잠금 퀴즈"><i></i></button></div>
-    <details class="lk-guide"><summary>설정 방법 (처음 한 번)</summary>
+    <details class="lk-guide"><summary>설정 방법 (자동화 하나만)</summary>
     <ol>
-      <li>이 앱을 <b>Safari</b>에서 열고 로그인해 두세요. (문제는 Safari로 열립니다)</li>
-      <li><b>단축어</b> 앱 → 오른쪽 위 <b>+</b> → 이름 <b>${PASS_SHORTCUT}</b> 로 새 단축어:<br>① <b>텍스트</b> 동작에 <b>현재 날짜</b> 넣기 → ② <b>파일 저장</b> (저장 위치 묻기 끄기, 경로 <code>/fx_pass.txt</code>, 덮어쓰기 켜기) → ③ <b>URL 열기</b>에 <b>단축어 입력</b> 넣기</li>
-      <li><b>자동화</b> 탭 → <b>+</b> → <b>앱</b> → 잠글 앱(인스타·유튜브 등) 선택, <b>열려 있음</b>, <b>즉시 실행</b> → 새 단축어:<br>① <b>파일 가져오기</b> <code>/fx_pass.txt</code> (찾지 못하면 오류 끄기) → ② <b>날짜 사이의 시간 가져오기</b>: 파일 내용 ~ 현재 날짜, 단위 <b>분</b> → ③ <b>만약</b> 결과가 <b>15보다 큼</b> → <b>URL 열기</b>: 아래 앱별 주소</li>
-      <li>처음 한 번 <b>${PASS_SHORTCUT}</b> 단축어를 직접 실행해서 <code>fx_pass.txt</code> 파일을 만들어 두세요.</li>
-      <li>Safari는 잠그지 마세요 (문제 화면이 Safari라 무한 반복돼요). 인터넷을 막고 싶으면 평소 크롬을 쓰고 크롬을 잠그세요.</li>
+      <li>이 앱을 <b>Safari</b>에서 열고 로그인해 두세요. (문제는 Safari로 열려요)</li>
+      <li><b>단축어</b> 앱 → <b>자동화</b> 탭 → <b>+</b> → <b>앱</b> → 잠글 앱(인스타·유튜브 등) 선택 → <b>열려 있음</b> 체크, <b>즉시 실행</b> → <b>다음</b> → <b>새로운 빈 자동화</b></li>
+      <li>아래 동작을 순서대로 추가:
+        <br>① <b>파일 가져오기</b> — 경로 <code>/fx_pass.txt</code>, <b>찾지 못하면 오류</b> 끄기
+        <br>② <b>만약</b> [파일] <b>값이 있음</b>
+        <br>&nbsp;&nbsp;&nbsp;③ <b>날짜 사이의 시간 가져오기</b> — [파일] 부터 [현재 날짜] 까지, 단위 <b>분</b>
+        <br>&nbsp;&nbsp;&nbsp;④ <b>만약</b> [날짜 사이의 시간] <b>보다 작음</b> 15 → <b>단축어 중단</b>
+        <br>⑤ (만약 바깥, 맨 아래) <b>텍스트</b>에 <b>현재 날짜</b> 넣기 → <b>파일 저장</b>: 경로 <code>/fx_pass.txt</code>, 저장 위치 묻기 끄기, <b>덮어쓰기</b> 켜기
+        <br>⑥ <b>URL 열기</b> — 아래 앱별 주소
+      </li>
+      <li>앱마다 자동화를 하나씩 만들고, ⑥의 주소만 그 앱 것으로 바꾸면 돼요.</li>
+      <li><b>Safari는 잠그지 마세요</b> (문제 화면이 Safari라 무한 반복돼요). 인터넷을 막고 싶으면 평소 크롬을 쓰고 크롬을 잠그세요.</li>
     </ol>
     <p style="margin:8px 0 4px;font-size:13px;font-weight:700">앱별 주소</p><ul class="lk-apps">${apps}</ul>
     <button class="pill w" style="margin-top:8px" onclick="location.hash='unlock/instagram'">미리 해보기</button></details></div>`;
