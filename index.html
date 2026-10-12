@@ -1633,7 +1633,7 @@ function adminCards(){
   if(!ME.m||!ME.m.is_admin)return '';
   return `<div class="card"><h4>회원 관리 ${ADMIN.pending?`<span class="badge">${ADMIN.pending}</span>`:''}</h4><div id="mlist"><p class="muted" style="font-size:14px;margin:0">불러오는 중...</p></div></div>
   <div class="card"><h4>문제·해설 업로드 (관리자)</h4><p class="muted" style="margin:0 0 12px;font-size:13.5px;line-height:1.6">PC의 <b>fire-exam/private</b> 폴더를 통째로 선택하세요. exam.json과 images 폴더가 서버로 올라가고, 승인된 회원 기기에 자동 반영됩니다.</p>
-    <span class="pill filebtn">폴더 선택해서 업로드<input type="file" webkitdirectory directory multiple onchange="uploadContent(this)"></span><div class="msg" id="upmsg"></div>
+    <span class="pill filebtn">폴더 선택해서 업로드<input type="file" webkitdirectory directory multiple onchange="uploadContent(this)"></span>${/^(localhost|127\.0\.0\.1)$/.test(location.hostname)?' <button class="pill b" onclick="uploadLocal()">이 PC의 private 폴더에서 바로 업로드</button>':''}<div class="msg" id="upmsg"></div>
     <p class="muted" style="margin:12px 0 0;font-size:13px">현재: 회차 ${D.exams.length} · 문제 ${Q.length}${CONTENT.at?` · ${new Date(CONTENT.at).toLocaleString('ko-KR')}`:''}</p></div>`;
 }
 async function loadMembers(){
@@ -1647,6 +1647,15 @@ async function loadMembers(){
 }
 async function setMember(uid,st){
   try{await rest('POST','rpc/fx_set_member',{p_user:uid,p_status:st});loadMembers()}catch(e){appAlert('변경하지 못했습니다. 잠시 후 다시 시도해 주세요.')}
+}
+async function uploadLocal(){
+  try{
+    msg('#upmsg','로컬 파일 읽는 중...');
+    const man=await (await fetch('private/manifest.json',{cache:'no-store'})).json();
+    const files=[new File([await (await fetch('private/exam.json',{cache:'no-store'})).blob()],'exam.json',{type:'application/json'})];
+    for(const n of man.images){const b=await (await fetch('private/images/'+encodeURIComponent(n))).blob();files.push(new File([b],n,{type:'image/png'}))}
+    await uploadContent({files,value:''});
+  }catch(e){msg('#upmsg','로컬 업로드 실패: '+e.message,true)}
 }
 async function uploadContent(input){
   const files=[...input.files];input.value='';
