@@ -307,6 +307,9 @@ body.gated #app{padding-bottom:0}
 .mbtn{display:flex;gap:6px;flex:none}
 .st.pending{color:#d08a00;font-weight:700}.st.approved{color:var(--green);font-weight:700}.st.rejected{color:var(--red);font-weight:700}
 .qimg{min-height:20px}.qimg.imgerr{min-height:0}
+.retry-row{margin:12px 0 4px}
+.retry-row .pill{display:inline-flex;gap:6px;align-items:center}
+.retry-row .ic{width:18px;height:18px}
 /* 화면 전환 */
 #view{touch-action:pan-y}
 .tabs,.pills,.qstrip{touch-action:pan-x}
@@ -473,8 +476,9 @@ html,body{background:#e9e3da}
 .wi{background:#fff;margin:10px 16px;border-radius:16px;box-shadow:var(--shadow);padding:15px 16px}
 .wt b{font-size:17px}
 .wt .wd{font-size:13px;color:var(--sub)}
-.chip{border-radius:8px;background:#3a2f29}
-.chip.r{background:var(--fire)}.chip.g{background:#e98a1c}
+.chips{gap:6px}
+.chip{border-radius:8px;background:#f1ebe2;color:#4b423c;font-weight:600;font-size:12.5px;padding:4px 9px}
+.chip.r{background:#ffe6df;color:#c8321d}.chip.g{background:#fff0d9;color:#b0620c}
 /* 문제 풀이 */
 .qstrip{gap:6px;padding:10px 14px;background:var(--bg);border-bottom:1px solid var(--line)}
 .qn{min-width:38px;height:38px;border-radius:11px;background:#fff;border:1px solid var(--line);font-size:15px;font-weight:600;padding:0 6px}
@@ -1021,7 +1025,7 @@ PAGES.quiz=sid=>{
   s.idx=Math.min(Math.max(0,s.idx),s.ids.length-1);
   const id=s.ids[s.idx],q=QI[id];
   const graded=s.mode!=='exam'||s.done;
-  const nums=s.ids.map((x,i)=>{const c=s.ans[x],qq=QI[x];let cls='';if(c!=null)cls=graded?(qq&&answers(qq).includes(+c)?'ok':'no'):'an';return `<button class="qn ${cls} ${i===s.idx?'cur':''}" onclick="qjump('${sid}',${i})">${i+1}</button>`}).join('');
+  const nums=s.ids.map((x,i)=>{const c=s.ans[x],qq=QI[x];let cls='';if(c!=null)cls=graded?(qq&&answers(qq).includes(+c)?'ok':'no'):'an';return `<button class="qn ${cls} ${i===s.idx?'cur':''}" onclick="qjump('${sid}',${i})">${qq?qq.no:i+1}</button>`}).join('');
   const right=`<button class="iconbtn ${S.marks[id]?'on':''}" data-a="${esc(id)}" onclick="toggleMark(this.dataset.a)" aria-label="북마크">${ic('star')}</button><button class="iconbtn" onclick="$('#qmenu').hidden=!$('#qmenu').hidden" aria-label="메뉴">${ic('dots')}</button>`;
   let h=hero(topBar(s.title,{right}),'slim')+`<div class="qstrip">${nums}</div>
     <div id="qmenu" class="qmenu" hidden>${s.done?'':`<button onclick="$('#qmenu').hidden=true;finishPrompt('${sid}')">지금 ${s.mode==='exam'?'제출':'종료'}하고 결과 보기</button>`}<button onclick="quitSession('${sid}')">진행중 목록에서 삭제</button></div>`;
@@ -1036,7 +1040,7 @@ PAGES.quiz=sid=>{
   const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
   const chap=qChapters(q)[0],sec=qSections(q)[0];
   h+=`<div class="qwrap"><div class="qhead"><div class="qsrc">${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번</div><div class="qtools"><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
-    <h2 class="qtitle"><b>${s.idx+1}</b>${fmt(q.q)}</h2>${imgs}
+    <h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
     <div class="choices">${choices}</div>`;
@@ -1045,6 +1049,7 @@ PAGES.quiz=sid=>{
     const simple=LS.get(LSK.simple,false);
     h+=`<div class="verdict ${ok?'ok':'no'}">${ic(ok?'check':'x')}${ok?'정답':'오답'}<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')}${ok?'':` · 내 답 ${NUM[chosen-1]}`}</span></div>
     ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:'<div class="exp none">등록된 해설이 없습니다</div>'}
+    <div class="retry-row"><button class="pill w" onclick="retryQ('${sid}')">${ic('undo')} 다시 풀기</button></div>
     ${unitHTML(chap,sec)}${tagsHTML(q)}`;
     if(q.cx&&q.cx.some(Boolean)){
       h+=`<div class="switch-row"><b>간단 해설 모드</b><button class="sw ${simple?'on':''}" onclick="LS.set('${LSK.simple}',${!simple});rerender()" aria-label="간단 해설 모드"><i></i></button></div>`;
@@ -1071,10 +1076,20 @@ function choose(sid,n){
   const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx];
   if(QV.strike){s.strike=s.strike||{};const a=s.strike[id]||[];s.strike[id]=a.includes(n)?a.filter(x=>x!==n):[...a,n];save();rerender();return}
   if(s.done)return;
-  if(s.mode!=='exam'){if(s.ans[id]!=null)return;s.ans[id]=n;record(id,n,s.kind)}
+  if(s.mode!=='exam'){
+    if(s.ans[id]!=null)return;s.ans[id]=n;const ok=record(id,n,s.kind);
+    if(ok&&s.kind==='wrong'&&!S.resolved[id])setTimeout(async()=>{
+      if(await appConfirm('맞힌 문제를 오답노트에서 지울까요?\n지워도 풀이 기록은 남아요.',{title:'정답이에요!',ok:'오답노트에서 지우기',cancel:'계속 남기기'})){touch('r:'+id);S.resolved[id]=1;save();rerender()}
+    },450);
+  }
   else s.ans[id]=s.ans[id]===n?undefined:n;
   if(s.ans[id]===undefined)delete s.ans[id];
   s.updated=now();save();rerender();
+}
+function retryQ(sid){
+  const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx];
+  if(s.done){startSession(s.kind==='wrong'?'wrong':'group',s.key||'',`${qLabel(QI[id])} 다시 풀기`,[id],{temp:true});return}
+  delete s.ans[id];if(s.strike)delete s.strike[id];s.updated=now();save();rerender();
 }
 function clearStrike(sid){const s=S.sessions[sid];if(s&&s.strike){delete s.strike[s.ids[s.idx]];save()}QV.strike=false;rerender()}
 function qmove(sid,d){const s=S.sessions[sid];goIdx(sid,s.idx+d,d)}
@@ -1735,7 +1750,6 @@ PAGES.home=()=>{
     <div class="today"><div><b>${st.n}</b><span>오늘 푼 문제</span></div><div><b>${st.n?pct(st.ok/st.n):'-'}</b><span>오늘 정답률</span></div><div><b>${sk}<small>일</small></b><span>연속 학습</span></div></div>`
   +(ADMIN.pending?`<a class="card inst" href="#settings" style="display:block"><div class="inst-row"><div><b>가입 승인 대기 ${ADMIN.pending}명</b><small>설정 → 회원 관리에서 승인해 주세요</small></div><span class="pill">확인</span></div></a>`:'')
   +(live.length?`<div class="sec">이어서 풀기</div><div class="cont">${live.slice(0,8).map(s=>{const a=answered(s);return `<a class="cc" href="#quiz/${s.id}"><small>${esc(TYPE_LABEL[s.kind]||'풀이')}</small><b>${esc(s.short||s.title)}</b><div class="ccbar"><i style="width:${a/s.ids.length*100}%"></i></div><span>${a} / ${s.ids.length}</span></a>`}).join('')}</div>`:'')
-  +(()=>{const rows=D.subjects.flatMap(sb=>focusRows(sb.id).map(r=>Object.assign(r,{a:Object.assign({},r.a,{name:`${subjShort(sb.id)} · ${r.a.name}`})})));return focusTop(rows,'지금 집중할 영역')})()
   +`<div class="sec">학습 메뉴</div><div class="sc-grid">${SC.map(([l,h,i,c])=>`<a class="sc" href="${h}"><i class="${c}">${ic(i)}</i><span>${l}</span></a>`).join('')}</div>`
   +installCard(true)
   +(sch.length||S.examDate?`<div class="sec">시험 일정</div><ul class="sched">${S.examDate?`<li><b>내 목표 시험</b><span>${S.examDate}</span></li>`:''}${sch.map(s=>`<li><b>${esc(s.name)}</b><span>${esc(s.date||'미정')}</span></li>`).join('')}</ul>`:'')
