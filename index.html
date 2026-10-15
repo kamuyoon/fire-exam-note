@@ -1158,6 +1158,9 @@ document.addEventListener('keydown',e=>{
   QV.kb=true;
   if(mod&&dg){e.preventDefault();toggleCCheck(sid,+dg[2]);return}
   if(e.shiftKey&&dg){e.preventDefault();toggleStrike(sid,+dg[2]);return}
+  // PC 숫자패드: Shift+숫자를 누르면 윈도우가 End·↓·PgDn·← 키로 바꿔 보냄(Shift 해제 상태로) → 소거로 처리
+  const np=/^Numpad([1-5])$/.exec(e.code||'');
+  if(np&&!/^[0-9]$/.test(e.key)){e.preventDefault();toggleStrike(sid,+np[1]);return}
   if(mod&&e.key==='Enter'){e.preventDefault();toggleQCheck(sid);return}
   if(mod)return;
   if(e.key==='ArrowRight'){e.preventDefault();qmove(sid,1)}
