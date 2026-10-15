@@ -1154,6 +1154,7 @@ document.addEventListener('keydown',e=>{
   const mod=e.ctrlKey||e.metaKey||e.altKey,dg=/^(Digit|Numpad)([1-5])$/.exec(e.code||'');
   QV.kb=true;
   if(mod&&dg){e.preventDefault();toggleCCheck(sid,+dg[2]);return}
+  if(e.shiftKey&&dg){e.preventDefault();toggleStrike(sid,+dg[2]);return}
   if(mod&&e.key==='Enter'){e.preventDefault();toggleQCheck(sid);return}
   if(mod)return;
   if(e.key==='ArrowRight'){e.preventDefault();qmove(sid,1)}
@@ -1181,6 +1182,10 @@ function retryQ(sid){
   const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx];
   if(s.done){startSession(s.kind==='wrong'?'wrong':'group',s.key||'',`${qLabel(QI[id])} 다시 풀기`,[id],{temp:true});return}
   delete s.ans[id];if(s.strike)delete s.strike[id];s.updated=now();save();rerender();
+}
+function toggleStrike(sid,n){
+  const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx],q=QI[id];if(!q||n>nChoices(q))return;
+  s.strike=s.strike||{};const a=s.strike[id]||[];s.strike[id]=a.includes(n)?a.filter(x=>x!==n):[...a,n];s.updated=now();save();rerender();
 }
 function clearStrike(sid){const s=S.sessions[sid];if(s&&s.strike){delete s.strike[s.ids[s.idx]];save()}QV.strike=false;rerender()}
 function qmove(sid,d){const s=S.sessions[sid];goIdx(sid,s.idx+d,d)}
@@ -1272,7 +1277,7 @@ function focusTop(rows,title){
 }
 
 /* ================= 스와이프로 문제 넘기기 / 안 푼 문제 안내 ================= */
-let NAVDIR=0;
+let NAVDIR=0,SWIPED=false;
 function goIdx(sid,ni,dir){
   QV.hl=0;
   const s=S.sessions[sid];if(!s)return;
@@ -1283,7 +1288,7 @@ function goIdx(sid,ni,dir){
 function bindSwipe(sid){
   const el=document.querySelector('.qwrap');if(!el)return;
   let x0=0,y0=0,dx=0,on=false,lock=null,moved=false;
-  const reset=()=>{el.style.transition='transform .22s ease-out,opacity .22s';el.style.transform='';el.style.opacity=''};
+  const reset=()=>{el.style.transition='transform .2s ease-out';el.style.transform=''};
   el.addEventListener('pointerdown',e=>{if(e.pointerType==='mouse'&&e.button!==0)return;if(e.target.closest('textarea,input'))return;on=true;moved=false;lock=null;dx=0;x0=e.clientX;y0=e.clientY;el.style.transition='none'});
   el.addEventListener('pointermove',e=>{
     if(!on)return;const mx=e.clientX-x0,my=e.clientY-y0;
@@ -1291,7 +1296,7 @@ function bindSwipe(sid){
     if(lock!=='x')return;
     moved=true;const s=S.sessions[sid];
     const edge=(mx>0&&s.idx===0);dx=edge?mx*.25:mx;
-    el.style.transform=`translateX(${dx}px)`;el.style.opacity=String(1-Math.min(Math.abs(dx)/700,.35));
+    el.style.transform=`translateX(${dx}px)`;
   });
   const end=()=>{
     if(!on)return;on=false;
@@ -1301,19 +1306,20 @@ function bindSwipe(sid){
       const d=dx<0?1:-1,ni=s.idx+d;
       if(ni<0){reset();return}
       if(ni>=s.ids.length){reset();finishPrompt(sid);return}
-      el.style.transition='transform .17s ease-in,opacity .17s';
-      el.style.transform=`translateX(${dx<0?-100:100}%)`;el.style.opacity='0';
-      setTimeout(()=>goIdx(sid,ni,d),160);
+      el.style.transition='transform .15s ease-in';
+      el.style.transform=`translateX(${dx<0?-100:100}%)`;
+      SWIPED=true;setTimeout(()=>goIdx(sid,ni,d),140);
     }else reset();
   };
   el.addEventListener('pointerup',end);el.addEventListener('pointercancel',()=>{on=false;reset()});el.addEventListener('pointerleave',e=>{if(e.pointerType==='mouse')end()});
   el.addEventListener('click',e=>{if(moved){e.preventDefault();e.stopPropagation();moved=false}},true);
-  if(NAVDIR){
-    el.style.transition='none';el.style.transform=`translateX(${NAVDIR*36}%)`;el.style.opacity='.2';
+  // 키보드·버튼으로 넘길 땐 애니메이션 없이 바로 교체 (깜빡임 없음)
+  if(NAVDIR&&SWIPED){
+    el.style.transition='none';el.style.transform=`translateX(${NAVDIR*100}%)`;
     void el.offsetWidth;
-    el.style.transition='transform .24s cubic-bezier(.2,.8,.2,1),opacity .24s';el.style.transform='';el.style.opacity='';
-    NAVDIR=0;
+    el.style.transition='transform .2s cubic-bezier(.2,.8,.2,1)';el.style.transform='';
   }
+  NAVDIR=0;SWIPED=false;
 }
 function unanswered(s){return s.ids.map((id,i)=>s.ans[id]==null?i:-1).filter(i=>i>=0)}
 function finishPrompt(sid){
