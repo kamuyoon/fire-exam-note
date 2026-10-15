@@ -1151,7 +1151,10 @@ document.addEventListener('keydown',e=>{
   if(e.target&&e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))return;
   const sid=location.hash.split('/')[1],s=S.sessions[sid];if(!s)return;
   const q=QI[s.ids[s.idx]],n=q?nChoices(q):4;
-  const mod=e.ctrlKey||e.metaKey||e.altKey,dg=/^(Digit|Numpad)([1-5])$/.exec(e.code||'');
+  // 숫자 판별: 기기·자판(한글 입력 포함)마다 code/key가 달라서 여러 방식으로 확인
+  const SHIFTED={'!':1,'@':2,'#':3,'$':4,'%':5};
+  const dn=(()=>{const m=/^(Digit|Numpad)([1-5])$/.exec(e.code||'');if(m)return +m[2];if(SHIFTED[e.key])return SHIFTED[e.key];if(/^[1-5]$/.test(e.key))return +e.key;const kc=e.keyCode||e.which||0;if(kc>=49&&kc<=53)return kc-48;if(kc>=97&&kc<=101)return kc-96;return 0})();
+  const mod=e.ctrlKey||e.metaKey||e.altKey,dg=dn?[null,null,dn]:null;
   QV.kb=true;
   if(mod&&dg){e.preventDefault();toggleCCheck(sid,+dg[2]);return}
   if(e.shiftKey&&dg){e.preventDefault();toggleStrike(sid,+dg[2]);return}
