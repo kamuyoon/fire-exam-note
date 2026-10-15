@@ -1,7 +1,7 @@
 // 소방 기출노트 오프라인 캐시
 // 앱 본체·데이터: 네트워크 우선(업데이트 즉시 반영), 실패 시 캐시
 // 문제 이미지·아이콘·폰트: 캐시 우선
-const CACHE = 'fx-v12';
+const CACHE = 'fx-v13';
 const SHELL = ['./', './index.html', './config.js', './manifest.json', './icon-192.png', './icon-512.png'];
 
 self.addEventListener('install', e => {

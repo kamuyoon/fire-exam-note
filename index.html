@@ -1090,7 +1090,7 @@ PAGES.quiz=sid=>{
     <h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
-    <div class="choices">${choices}</div>
+    <div class="choices">${choices}</div>`;
   if(reveal){
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
