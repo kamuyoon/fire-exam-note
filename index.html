@@ -1091,7 +1091,6 @@ PAGES.quiz=sid=>{
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
     <div class="choices">${choices}</div>
-    ${QV.kb||matchMedia('(hover:hover) and (pointer:fine)').matches?'<p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> 문제 이동 · <kbd>↑</kbd><kbd>↓</kbd> 보기 고르기 · <kbd>Enter</kbd> 정답 · <kbd>Ctrl</kbd>+<kbd>1~4</kbd> 지문 체크 · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 문제 체크</p>':''}`;
   if(reveal){
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
