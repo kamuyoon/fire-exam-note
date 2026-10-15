@@ -327,6 +327,34 @@ body.lock-mode #app{padding-bottom:20px}
 .lk-guide li{margin-bottom:6px}
 .lk-guide code{background:#f3eee7;border-radius:5px;padding:1px 5px;font-size:12px;word-break:break-all}
 .lk-apps{list-style:none;padding:0;margin:0;font-size:12.5px;line-height:1.8}
+/* 체크 · 키보드 */
+.qt{position:relative}
+.qt.ck.on{background:linear-gradient(135deg,#2ec27e,#13a067);color:#fff;border-color:transparent}
+.qt .cnt,.ckc i{position:absolute;top:-6px;right:-6px;min-width:18px;height:18px;border-radius:9px;background:var(--fire);color:#fff;font-size:11px;font-style:normal;font-weight:700;display:flex;align-items:center;justify-content:center;padding:0 4px}
+.crow-wrap{display:flex;gap:6px;align-items:stretch;margin:8px 0}
+.crow-wrap .crow{flex:1;margin:0;min-width:0}
+.ckc{flex:none;width:44px;border-radius:14px;border:1.5px solid var(--line);background:#fff;color:#d3c9bd;position:relative;display:flex;align-items:center;justify-content:center}
+.ckc .ic{width:20px;height:20px}
+.ckc.on{background:#ecfaf2;border-color:var(--green);color:var(--green)}
+.cnum-ck{display:flex;gap:12px;justify-content:center;margin:-6px 0 10px}
+.cnum-ck .ckc{width:58px;height:34px}
+.crow.hl{border-color:var(--coal);box-shadow:0 0 0 3px rgba(255,106,26,.35)}
+.cnum .hl{box-shadow:0 0 0 3px rgba(255,106,26,.45)}
+.kbd-hint{margin:12px 0 0;font-size:12px;color:var(--sub);line-height:2}
+.kbd-hint kbd{display:inline-block;min-width:20px;padding:0 5px;margin:0 1px;border:1px solid var(--line);border-bottom-width:2px;border-radius:5px;background:#fff;font-family:inherit;font-size:11px;text-align:center;color:var(--ink)}
+.miss{display:flex;flex-wrap:wrap;gap:8px}
+.miss a{padding:9px 13px;border-radius:12px;background:#fff1ee;border:1.5px solid #f5b9ae;color:var(--red);font-weight:700;font-size:15px}
+.miss a.na{background:#f4f0ea;border-color:var(--line);color:var(--sub)}
+.ck-list{padding:0 16px}
+.ck-row{display:flex;gap:12px;align-items:flex-start;background:#fff;border-radius:16px;box-shadow:var(--shadow);padding:14px;margin:10px 0}
+.ck-rk{flex:none;width:30px;height:30px;border-radius:10px;background:#efe8de;color:#6b5f55;font-weight:800;display:flex;align-items:center;justify-content:center}
+.ck-rk.top{background:var(--grad);color:#fff}
+.ck-m{flex:1;min-width:0}
+.ck-m b{font-size:15.5px}
+.ck-m p{margin:3px 0 8px;font-size:13.5px;color:var(--sub);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ck-tags{display:flex;flex-wrap:wrap;gap:6px}
+.ck-tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:8px;background:#ecfaf2;color:#0f8a57}
+.ck-tag.q{background:var(--grad);color:#fff}
 /* 화면 전환 */
 #view{touch-action:pan-y}
 .tabs,.pills,.qstrip{touch-action:pan-x}
@@ -635,8 +663,8 @@ function fmt(s){
 const plain=s=>String(s||'').replace(/\[\/?보기\]|\*\*|__/g,' ').replace(/\s+/g,' ').trim();
 
 /* ================= state ================= */
-const DEF={nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{}};
-const freshState=o=>Object.assign({},DEF,{attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{}},o||{});
+const DEF={nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{}};
+const freshState=o=>Object.assign({},DEF,{attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{}},o||{});
 let S=freshState(LS.get('fx_state',{}));
 const touch=k=>{S.mt[k]=now()};
 function save(){LS.set('fx_state',S);if(SB_URL&&uidOf()){clearTimeout(SYNC.timer);SYNC.timer=setTimeout(syncNow,2500)}}
@@ -663,7 +691,7 @@ function mergeState(a,b){
   [a.sessions,b.sessions].forEach(o=>Object.values(o).forEach(s=>{if(r.del[s.id]||s.updated<RA)return;const c=r.sessions[s.id];if(!c||s.updated>c.updated)r.sessions[s.id]=s}));
   const mm=new Map();[...a.memos,...b.memos].forEach(m=>{if(r.del[m.id]||m.t<RA)return;const c=mm.get(m.id);if(!c||m.t>c.t)mm.set(m.id,m)});
   r.memos=[...mm.values()].sort((x,y)=>y.t-x.t);
-  [['notes','n:'],['qnotes','q:'],['marks','m:'],['resolved','r:']].forEach(([f,p])=>{
+  [['notes','n:'],['qnotes','q:'],['marks','m:'],['resolved','r:'],['checks','k:']].forEach(([f,p])=>{
     uniq([...Object.keys(a[f]),...Object.keys(b[f])]).forEach(k=>{
       const ta=a.mt[p+k]||0,tb=b.mt[p+k]||0;if(Math.max(ta,tb)<RA)return;
       const v=ta===tb?(a[f][k]??b[f][k]):(tb>ta?b:a)[f][k];if(v!=null)r[f][k]=v;
@@ -808,7 +836,7 @@ const isWrong=id=>!S.resolved[id]&&att(id).some(x=>!x.ok);
 function record(id,c,src){const q=QI[id];if(!q)return false;const ok=answers(q).includes(+c);(S.attempts[id]=S.attempts[id]||[]).push({t:now(),c:+c,ok,src});if(!ok&&S.resolved[id]){delete S.resolved[id];touch('r:'+id)}return ok}
 
 /* groups */
-const TYPE_LABEL={exam:'회차',examsub:'회차',subject:'과목',chapter:'단원',section:'세부단원',keyword:'키워드',mark:'북마크',wrong:'오답',round:'회독',omr:'채점'};
+const TYPE_LABEL={exam:'회차',examsub:'회차',subject:'과목',chapter:'단원',section:'세부단원',keyword:'키워드',mark:'북마크',check:'체크',wrong:'오답',round:'회독',omr:'채점'};
 function groupQs(t,k){switch(t){
   case 'exam':return Q.filter(q=>q.exam===k);
   case 'examsub':{const [e,s]=k.split('~');return Q.filter(q=>q.exam===e&&q.subject===s)}
@@ -817,6 +845,7 @@ function groupQs(t,k){switch(t){
   case 'keyword':return Q.filter(q=>q.keywords.includes(k));
   case 'area':return areaQs(k);
   case 'mark':return Q.filter(q=>S.marks[q.id]);
+  case 'check':return checkRanked('').map(x=>x.q);
   case 'wrong':return Q.filter(q=>isWrong(q.id));
   default:return []}}
 function groupName(t,k){switch(t){
@@ -826,6 +855,7 @@ function groupName(t,k){switch(t){
   case 'keyword':return k;
   case 'area':return areaName(k);
   case 'mark':return '북마크';
+  case 'check':return '체크 문제';
   case 'wrong':return '오답노트';
   default:return isUnc(k)?`미분류 (${subjShort(k.slice(4))})`:codeName(k)}}
 
@@ -858,7 +888,7 @@ function startRound(sub){
 
 /* ================= router ================= */
 const PAGES={},AFTER={};
-const TABMAP={home:'home',memo:'home',summary:'home',freq:'home',omr:'home',rounds:'home',toc:'settings',solve:'solve',pick:'solve',group:'solve',result:'solve',wrong:'wrong',stats:'stats',settings:'settings'};
+const TABMAP={checks:'home',home:'home',memo:'home',summary:'home',freq:'home',omr:'home',rounds:'home',toc:'settings',solve:'solve',pick:'solve',group:'solve',result:'solve',wrong:'wrong',stats:'stats',settings:'settings'};
 function render(keep){
   const raw=location.hash.slice(1)||'home';
   const parts=raw.split('/').map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
@@ -1033,7 +1063,7 @@ AFTER.group=growAll;
 function setNote(el){const k=el.dataset.a;touch('n:'+k);if(el.value.trim())S.notes[k]=el.value;else delete S.notes[k];save();autoGrow(el)}
 
 /* ================= quiz ================= */
-const QV={strike:false,hint:false};
+const QV={strike:false,hint:false,hl:0,kb:false};
 const LSK={simple:'fx_simple'};
 PAGES.quiz=sid=>{
   const s=S.sessions[sid];
@@ -1048,18 +1078,20 @@ PAGES.quiz=sid=>{
   if(!q)return h+'<p class="empty">문제 데이터를 찾을 수 없습니다</p>'+qbar(s);
   const chosen=s.ans[id],reveal=chosen!=null&&graded,ans=answers(q),st=qstat(id);
   const strike=(s.strike&&s.strike[id])||[];
-  const cls=n=>{let c=strike.includes(n)?' struck':'';if(reveal){if(ans.includes(n))c+=' correct';else if(+chosen===n)c+=' wrong'}else if(+chosen===n)c+=' sel';return c};
+  const sc=sessChk(s,id,false),gc=S.checks[id]||{q:0,c:{}};
+  const cls=n=>{let c=strike.includes(n)?' struck':'';if(QV.hl===n)c+=' hl';if(reveal){if(ans.includes(n))c+=' correct';else if(+chosen===n)c+=' wrong'}else if(+chosen===n)c+=' sel';return c};
   const n=nChoices(q);
   const choices=q.choiceImg||!q.choices
-    ?`<div class="cnum">${Array.from({length:n},(_,i)=>`<button class="${cls(i+1)}" onclick="choose('${sid}',${i+1})">${NUM[i]}</button>`).join('')}</div>`
-    :q.choices.map((c,i)=>`<button class="crow${cls(i+1)}" onclick="choose('${sid}',${i+1})"><span class="cmark">${reveal&&ans.includes(i+1)?ic('ok'):reveal&&+chosen===i+1?ic('no'):''}</span><span class="cn">${NUM[i]}</span><span class="ct">${fmt(c)}</span></button>`).join('');
+    ?`<div class="cnum">${Array.from({length:n},(_,i)=>`<button class="${cls(i+1)}" onclick="choose('${sid}',${i+1})">${NUM[i]}</button>`).join('')}</div><div class="cnum-ck">${Array.from({length:n},(_,i)=>ckBtn(sid,i+1,sc,gc)).join('')}</div>`
+    :q.choices.map((c,i)=>`<div class="crow-wrap"><button class="crow${cls(i+1)}" onclick="choose('${sid}',${i+1})"><span class="cmark">${reveal&&ans.includes(i+1)?ic('ok'):reveal&&+chosen===i+1?ic('no'):''}</span><span class="cn">${NUM[i]}</span><span class="ct">${fmt(c)}</span></button>${ckBtn(sid,i+1,sc,gc)}</div>`).join('');
   const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
   const chap=qChapters(q)[0],sec=qSections(q)[0];
-  h+=`<div class="qwrap"><div class="qhead"><div class="qsrc">${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번</div><div class="qtools"><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
+  h+=`<div class="qwrap"><div class="qhead"><div class="qsrc">${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번</div><div class="qtools"><button class="qt ck ${sc&&sc.q?'on':''}" onclick="toggleQCheck('${sid}')" aria-label="이 문제 체크" title="이 문제 체크 (Ctrl+Enter)">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
     <h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
-    <div class="choices">${choices}</div>`;
+    <div class="choices">${choices}</div>
+    ${QV.kb||matchMedia('(hover:hover) and (pointer:fine)').matches?'<p class="kbd-hint"><kbd>←</kbd><kbd>→</kbd> 문제 이동 · <kbd>↑</kbd><kbd>↓</kbd> 보기 고르기 · <kbd>Enter</kbd> 정답 · <kbd>Ctrl</kbd>+<kbd>1~4</kbd> 지문 체크 · <kbd>Ctrl</kbd>+<kbd>Enter</kbd> 문제 체크</p>':''}`;
   if(reveal){
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
@@ -1082,12 +1114,56 @@ function unitHTML(chap,sec){
   return `<div class="unit"><a class="un" href="#group/chapter/${enc(chap)}">${esc(codeName(chap))}</a>${sec?`<a class="pill sm sky" href="#group/section/${enc(sec)}">${esc(codeName(sec))} ${ic('open')}</a>`:''}</div>`;
 }
 const tagsHTML=q=>q.keywords.length?`<div class="tags">${q.keywords.map(k=>`<a href="#group/keyword/${enc(k)}">#${esc(k)}</a>`).join('')}</div>`:'';
-AFTER.quiz=sid=>{growAll();bindSwipe(sid);const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
+AFTER.quiz=sid=>{growAll();bindSwipe(sid);const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)hl.scrollIntoView({block:'nearest'});const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
 function qbar(s){
   const last=s.idx>=s.ids.length-1;
   const main=last?(s.done?`<button class="qb main" onclick="location.hash='result/${s.id}'">결과 보기</button>`:`<button class="qb main" onclick="finishPrompt('${s.id}')">${s.mode==='exam'?'제출하기':'풀이 완료'}</button>`):`<button class="qb main" onclick="qmove('${s.id}',1)">다음</button>`;
   return `<div class="qbar"><button class="qb" ${s.idx?'':'disabled'} onclick="qmove('${s.id}',-1)">이전</button><span class="qcount">${answered(s)} / ${s.ids.length}</span>${main}</div>`;
 }
+/* ---------- 체크(잘 안 외워짐): 회차마다 체크하면 누적 ---------- */
+function sessChk(s,id,make=true){s.chk=s.chk||{};if(!s.chk[id]){if(!make)return{q:false,c:[]};s.chk[id]={q:false,c:[]}}return s.chk[id]}
+function chkCount(id){const g=S.checks[id];if(!g)return{q:0,c:0};return{q:g.q||0,c:Object.values(g.c||{}).reduce((a,b)=>a+b,0)}}
+function chkClean(id){const g=S.checks[id];if(g&&!g.q&&!Object.values(g.c||{}).some(v=>v>0))delete S.checks[id]}
+function toggleQCheck(sid){
+  const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx],sc=sessChk(s,id),g=S.checks[id]=S.checks[id]||{q:0,c:{}};
+  if(sc.q){sc.q=false;g.q=Math.max(0,(g.q||0)-1)}else{sc.q=true;g.q=(g.q||0)+1}
+  chkClean(id);touch('k:'+id);s.updated=now();save();rerender();
+}
+function toggleCCheck(sid,n){
+  const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx],q=QI[id];if(!q||n>nChoices(q))return;
+  const sc=sessChk(s,id),g=S.checks[id]=S.checks[id]||{q:0,c:{}};g.c=g.c||{};
+  if(sc.c.includes(n)){sc.c=sc.c.filter(x=>x!==n);g.c[n]=Math.max(0,(g.c[n]||0)-1);if(!g.c[n])delete g.c[n]}
+  else{sc.c.push(n);g.c[n]=(g.c[n]||0)+1}
+  chkClean(id);touch('k:'+id);s.updated=now();save();rerender();
+}
+function ckBtn(sid,n,sc,gc){
+  const on=sc&&sc.c.includes(n),cnt=(gc.c||{})[n]||0;
+  return `<button class="ckc ${on?'on':''}" onclick="event.stopPropagation();toggleCCheck('${sid}',${n})" aria-label="${n}번 지문 체크" title="${n}번 지문 체크 (Ctrl+${n})">${ic('ok')}${cnt?`<i>${cnt}</i>`:''}</button>`;
+}
+/* ---------- 키보드 (아이패드 블루투스 키보드·PC) ---------- */
+document.addEventListener('keydown',e=>{
+  const sheet=document.getElementById('sheet');
+  if(sheet){
+    if(e.key==='Escape'){const c=sheet.querySelector('.dbtn.ghost');if(c)c.click();else sheet.click()}
+    else if(e.key==='Enter'){const ok=sheet.querySelector('.dbtn[data-v="1"]');if(ok){e.preventDefault();ok.click()}}
+    return;
+  }
+  if(pageOf(location.hash)!=='quiz')return;
+  if(e.target&&e.target.closest&&e.target.closest('input,textarea,select,[contenteditable]'))return;
+  const sid=location.hash.split('/')[1],s=S.sessions[sid];if(!s)return;
+  const q=QI[s.ids[s.idx]],n=q?nChoices(q):4;
+  const mod=e.ctrlKey||e.metaKey||e.altKey,dg=/^(Digit|Numpad)([1-5])$/.exec(e.code||'');
+  QV.kb=true;
+  if(mod&&dg){e.preventDefault();toggleCCheck(sid,+dg[2]);return}
+  if(mod&&e.key==='Enter'){e.preventDefault();toggleQCheck(sid);return}
+  if(mod)return;
+  if(e.key==='ArrowRight'){e.preventDefault();qmove(sid,1)}
+  else if(e.key==='ArrowLeft'){e.preventDefault();if(s.idx>0)qmove(sid,-1)}
+  else if(e.key==='ArrowDown'){e.preventDefault();QV.hl=QV.hl>=n?1:(QV.hl||0)+1;rerender()}
+  else if(e.key==='ArrowUp'){e.preventDefault();QV.hl=QV.hl<=1?n:QV.hl-1;rerender()}
+  else if(dg&&+dg[2]<=n){e.preventDefault();QV.hl=+dg[2];rerender()}
+  else if(e.key==='Enter'&&QV.hl){e.preventDefault();choose(sid,QV.hl)}
+});
 function choose(sid,n){
   const s=S.sessions[sid];if(!s)return;const id=s.ids[s.idx];
   if(QV.strike){s.strike=s.strike||{};const a=s.strike[id]||[];s.strike[id]=a.includes(n)?a.filter(x=>x!==n):[...a,n];save();rerender();return}
@@ -1199,6 +1275,7 @@ function focusTop(rows,title){
 /* ================= 스와이프로 문제 넘기기 / 안 푼 문제 안내 ================= */
 let NAVDIR=0;
 function goIdx(sid,ni,dir){
+  QV.hl=0;
   const s=S.sessions[sid];if(!s)return;
   if(ni>=s.ids.length){finishPrompt(sid);return}
   if(ni<0)return;
@@ -1266,6 +1343,24 @@ document.addEventListener('pointerdown',e=>{
   document.addEventListener('pointermove',mm);document.addEventListener('pointerup',up);
 });
 
+/* ================= 체크 문제 (잘 안 외워지는 문제, 체크 많은 순) ================= */
+function checkRanked(sub){
+  return Q.filter(q=>S.checks[q.id]&&(!sub||q.subject===sub)).map(q=>({q,k:chkCount(q.id)}))
+    .filter(x=>x.k.q||x.k.c).sort((a,b)=>b.k.q-a.k.q||b.k.c-a.k.c||a.q.no-b.q.no);
+}
+PAGES.checks=(sub='')=>{
+  const L=checkRanked(sub);
+  let h=hero(topBar('체크 문제')+`<div class="gcap" style="margin-top:4px">잘 안 외워지는 문제 · 문제 체크 많은 순, 같으면 지문 체크 많은 순</div>`+subjPills(sub,k=>`#checks/${k}`),'slim');
+  h+=`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn" ${L.length?'':'disabled'} onclick="startChecks('${sub}',0,false)">체크 문제 모아 풀기<small>${L.length}문항 · 순위순</small></button><button class="btn blue" onclick="location.hash='group/mark/all'">북마크 보기<small>${Q.filter(q=>S.marks[q.id]).length}문항</small></button></div></div>`;
+  if(!L.length)return h+`<p class="empty">아직 체크한 문제가 없어요.<br>문제 화면에서 체크 버튼(또는 Ctrl+Enter, Ctrl+1~4)을 눌러 표시하세요.</p>`;
+  return h+`<div class="ck-list">${L.map((x,i)=>{const g=S.checks[x.q.id],cs=Object.entries(g.c||{}).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
+    return `<a class="ck-row" href="javascript:void 0" onclick="startChecks('${sub}',${i},true)"><span class="ck-rk ${i<3?'top':''}">${i+1}</span><div class="ck-m"><b>${esc(qLabel(x.q))}</b><p>${esc(plain(x.q.q))}</p><div class="ck-tags">${x.k.q?`<span class="ck-tag q">문제 ✓${x.k.q}</span>`:''}${cs.map(([n,v])=>`<span class="ck-tag">${NUM[n-1]} ✓${v}</span>`).join('')}</div></div></a>`}).join('')}</div>`;
+};
+function startChecks(sub,i,temp){
+  const ids=checkRanked(sub).map(x=>x.q.id);if(!ids.length)return;
+  startSession('check',sub||'all','체크 문제 풀기',ids,{idx:+i,temp:!!temp,short:'체크 문제'});
+}
+
 /* ================= 회차별 풀어보기 ================= */
 function starSVG(i,score,rate){
   const col=rate>=.8?['#ffb347','#ff6a1a']:rate>=.6?['#ffd36b','#f2a33a']:['#ff7a6b','#c81e12'];
@@ -1320,7 +1415,9 @@ PAGES.result=sid=>{
   if(isWrong)return hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk} / ${s.ids.length}</b><span>맞힌 문제${nAns<s.ids.length?` · 안 푼 문제 ${s.ids.length-nAns}`:''}</span></div>`,'slim')
     +`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`
     +`<div class="card"><h4>문항별 결과</h4><div class="rnums">${rows.map(r=>`<a class="${r.c==null?'na':r.ok?'ok':'no'}" href="javascript:void 0" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}${r.c==null?'':r.ok?' O':' X'}</a>`).join('')}</div></div>`;
-  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk*2}점</b><span>${s.ids.length}문항 중 ${nOk}개 정답${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
+  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk*2}점</b><span>정답률 ${pct(nOk/s.ids.length)} · ${s.ids.length}문항 중 ${nOk}개 정답${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
+  const miss=rows.filter(r=>!r.ok);
+  h+=`<div class="card"><h4>틀린 문제 ${miss.length?`<span class="badge">${miss.length}</span>`:''}</h4>${miss.length?`<div class="miss">${miss.map(r=>`<a href="javascript:void 0" class="${r.c==null?'na':''}" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}번${r.c==null?' (안 풂)':''}</a>`).join('')}</div><p class="muted" style="margin:10px 0 0;font-size:13px">번호를 누르면 그 문제와 해설로 바로 이동해요</p>`:'<p class="muted" style="margin:0">모두 맞혔어요!</p>'}</div>`;
   const rk=roundKey(s),rl=rk&&S.rounds[rk];
   if(rl&&rl.length)h+=`<div class="card" style="display:flex;align-items:center;gap:12px"><div class="stars" style="margin:0">${starSVG(rl.length,rl[rl.length-1].score,rl[rl.length-1].n?rl[rl.length-1].ok/rl[rl.length-1].n:1)}</div><div><b>${rl.length}회독 완료</b><br><a class="link" style="font-size:14px" href="#pick/exam/${rk.split('~')[1]}">회차별 기록 보기</a></div></div>`;
   h+=`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`;
@@ -1765,7 +1862,7 @@ PAGES.home=()=>{
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],['집중공략','#stats/focus','fire','c1'],
     ['회독 현황','#rounds','refresh','c3'],['빈출 단원','#freq','chart','c4'],['요약노트','#summary','star','c1'],
-    ['북마크','#group/mark/all','bookmark','c2'],['메모장','#memo','list','c3'],['OMR 채점','#omr','check','c4']];
+    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OMR 채점','#omr','check','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
   return `<header class="home-top">
       <div class="ht-bar"><span class="ht-brand">${ic('fire')}소방 기출노트</span>${dd!=null?`<span class="ht-dday">D-${dd}</span>`:`<a class="ht-dday set" href="#settings">시험일 설정</a>`}</div>
