@@ -355,6 +355,23 @@ body.lock-mode #app{padding-bottom:20px}
 .ck-tags{display:flex;flex-wrap:wrap;gap:6px}
 .ck-tag{font-size:12px;font-weight:700;padding:3px 8px;border-radius:8px;background:#ecfaf2;color:#0f8a57}
 .ck-tag.q{background:var(--grad);color:#fff}
+/* 문제 메모 기록 */
+.qm{background:#fff;border-radius:16px;box-shadow:var(--shadow);padding:14px;margin-top:14px}
+.qm-h{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px}
+.qm-h b{display:flex;align-items:center;gap:6px;font-size:15px}
+.qm-h .ic{width:18px;height:18px;color:var(--ember)}
+.qm-h .muted{font-size:12.5px}
+.qm-list{display:flex;flex-direction:column;gap:8px;margin-bottom:10px}
+.qm-item{background:#fbf7f1;border-left:3px solid var(--gold);border-radius:10px;padding:9px 12px}
+.qm-meta{display:flex;align-items:center;gap:6px;font-size:11.5px;color:var(--sub)}
+.qm-del{margin-left:auto;border:0;background:none;color:#c9bfb3;padding:2px;display:flex}
+.qm-del .ic{width:16px;height:16px}
+.qm-item p{margin:4px 0 0;font-size:14.5px;line-height:1.6;word-break:keep-all}
+.qm-in{min-height:70px}
+.qm-peek{margin:12px 0 0;background:#fff8ef;border:1px dashed #f3c99f;border-radius:12px;padding:8px 12px}
+.qm-peek summary{cursor:pointer;font-size:13.5px;font-weight:700;color:var(--ember);display:flex;align-items:center;gap:6px;list-style:none}
+.qm-peek summary .ic{width:16px;height:16px}
+.qm-peek .qm-list{margin:10px 0 2px}
 /* 화면 전환 */
 #view{touch-action:pan-y}
 .tabs,.pills,.qstrip{touch-action:pan-x}
@@ -663,8 +680,8 @@ function fmt(s){
 const plain=s=>String(s||'').replace(/\[\/?보기\]|\*\*|__/g,' ').replace(/\s+/g,' ').trim();
 
 /* ================= state ================= */
-const DEF={nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{}};
-const freshState=o=>Object.assign({},DEF,{attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{}},o||{});
+const DEF={nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{},qmemos:{}};
+const freshState=o=>Object.assign({},DEF,{attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{},qmemos:{}},o||{});
 let S=freshState(LS.get('fx_state',{}));
 const touch=k=>{S.mt[k]=now()};
 function save(){LS.set('fx_state',S);if(SB_URL&&uidOf()){clearTimeout(SYNC.timer);SYNC.timer=setTimeout(syncNow,2500)}}
@@ -682,6 +699,11 @@ function mergeState(a,b){
     const cut=Math.max(RA,r.resetAt[id]||0),m=new Map();
     [...(a.attempts[id]||[]),...(b.attempts[id]||[])].forEach(x=>{if(x.t>cut)m.set(x.t+':'+x.c,x)});
     const arr=[...m.values()].sort((x,y)=>x.t-y.t);if(arr.length)r.attempts[id]=arr;
+  });
+  uniq([...Object.keys(a.qmemos),...Object.keys(b.qmemos)]).forEach(k=>{
+    const m=new Map();
+    [...(a.qmemos[k]||[]),...(b.qmemos[k]||[])].forEach(x=>{if(r.del[x.id]||x.t<RA)return;const c=m.get(x.id);if(!c||(x.u||x.t)>(c.u||c.t))m.set(x.id,x)});
+    const arr=[...m.values()].sort((x,y)=>x.t-y.t);if(arr.length)r.qmemos[k]=arr;
   });
   uniq([...Object.keys(a.rounds),...Object.keys(b.rounds)]).forEach(k=>{
     const cut=Math.max(RA,r.resetAt['rd:'+k]||0),m=new Map();
@@ -1090,7 +1112,8 @@ PAGES.quiz=sid=>{
     <h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
-    <div class="choices">${choices}</div>`;
+    <div class="choices">${choices}</div>
+    ${!reveal&&qMemos(id).length?`<details class="qm-peek"><summary>${ic('list')} 지난 메모 ${qMemos(id).length}개 보기</summary>${memoList(id)}</details>`:''}`;
   if(reveal){
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
@@ -1103,7 +1126,7 @@ PAGES.quiz=sid=>{
       if(!simple)h+=Array.from({length:n},(_,i)=>{const good=ans.includes(i+1),mine=+chosen===i+1;return `<div class="ca"><div class="ca-h"><span class="m">${good?ic('ok'):mine?ic('no'):''}</span><span>${NUM[i]} ${q.choices?fmt(q.choices[i]):''}</span></div>${q.cx[i]?`<p class="ca-e ${good?'g':'r'}">${fmt(q.cx[i])}</p>`:''}</div>`}).join('');
     }
     h+=`<div class="qinfo">이 문제 누적 풀이 ${st.n}회 · 정답 ${st.ok} · 오답 ${st.wrong}</div>
-    <textarea class="note" data-a="${esc(id)}" oninput="setQnote(this)" placeholder="이 문제 메모 (헷갈린 포인트, 암기할 것)">${esc(S.qnotes[id]||'')}</textarea>
+    ${memoBlock(sid,id)}
     ${st.wrong?`<div style="margin-top:10px"><button class="pill sm ${S.resolved[id]?'':'gr'}" data-a="${esc(id)}" onclick="toggleResolved(this.dataset.a)">${S.resolved[id]?'오답노트에 다시 넣기':'오답노트에서 제외'}</button></div>`:''}`;
   }else if(s.mode==='exam'&&!s.done)h+=`<p class="qinfo">실전 모드: 마지막 문항에서 제출하면 한 번에 채점됩니다</p>`;
   return h+`</div>`+qbar(s);
@@ -1224,6 +1247,35 @@ function finish(sid,force){
 function quitSession(sid){dropSession(sid);save();location.hash='solve'}
 function toggleMark(id){touch('m:'+id);S.marks[id]?delete S.marks[id]:S.marks[id]=1;save();rerender()}
 function toggleResolved(id){touch('r:'+id);S.resolved[id]?delete S.resolved[id]:S.resolved[id]=1;save();rerender()}
+/* ---------- 문제 메모 기록 (제출 후 작성 → 다음에 풀 때 열람) ---------- */
+function qMemos(id){
+  if(S.qnotes&&S.qnotes[id]&&String(S.qnotes[id]).trim()){   // 예전 단일 메모를 첫 기록으로 옮김
+    (S.qmemos[id]=S.qmemos[id]||[]).unshift({id:uid(),t:S.mt['q:'+id]||now(),text:S.qnotes[id],from:'이전 메모'});
+    delete S.qnotes[id];touch('q:'+id);save();
+  }
+  return S.qmemos[id]||[];
+}
+function memoList(id){
+  const L=[...qMemos(id)].reverse();
+  return `<div class="qm-list">${L.map(m=>`<div class="qm-item"><div class="qm-meta">${new Date(m.t).toLocaleString('ko-KR',{year:'2-digit',month:'numeric',day:'numeric',hour:'2-digit',minute:'2-digit'})}${m.from?` · ${esc(m.from)}`:''}<button class="qm-del" data-a="${esc(id)}" data-m="${m.id}" onclick="delQMemo(this.dataset.a,this.dataset.m)" aria-label="메모 삭제">${ic('no')}</button></div><p>${esc(m.text).replace(/\n/g,'<br>')}</p></div>`).join('')}</div>`;
+}
+function memoBlock(sid,id){
+  const n=qMemos(id).length;
+  return `<div class="qm"><div class="qm-h"><b>${ic('list')} 내 메모</b>${n?`<span class="muted">${n}개 기록</span>`:''}</div>${n?memoList(id):''}
+    <textarea class="note qm-in" id="qmin" data-s="${sid}" data-a="${esc(id)}" placeholder="이번에 헷갈린 점, 외울 것 (Ctrl+Enter로 저장)" onkeydown="if((event.ctrlKey||event.metaKey)&&event.key==='Enter'){event.preventDefault();addQMemo(this)}"></textarea>
+    <button class="pill" style="margin-top:8px" onclick="addQMemo(document.getElementById('qmin'))">메모 저장</button></div>`;
+}
+function addQMemo(el){
+  if(!el)return;const t=el.value.trim();if(!t)return;
+  const s=S.sessions[el.dataset.s],id=el.dataset.a;
+  (S.qmemos[id]=S.qmemos[id]||[]).push({id:uid(),t:now(),text:t,from:s?(s.short||s.title):''});
+  save();rerender();
+}
+async function delQMemo(id,mid){
+  if(!await appConfirm('이 메모를 지울까요?',{ok:'지우기',danger:true}))return;
+  S.qmemos[id]=(S.qmemos[id]||[]).filter(m=>m.id!==mid);if(!S.qmemos[id].length)delete S.qmemos[id];
+  S.del[mid]=now();save();rerender();
+}
 function setQnote(el){const k=el.dataset.a;touch('q:'+k);if(el.value.trim())S.qnotes[k]=el.value;else delete S.qnotes[k];save();autoGrow(el)}
 
 /* ================= 집중공략 (공개 출제비중 × 내 오답률) ================= */
