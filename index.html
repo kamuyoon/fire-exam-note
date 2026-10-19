@@ -617,6 +617,11 @@ html,body{background:#e9e3da}
 .gate-tabs button.on{color:var(--ember)}
 .spin{border-top-color:var(--ember)}
 .inst-row img{border-radius:14px}
+
+.bookc{display:flex;align-items:center;gap:12px;text-decoration:none;color:inherit;margin:0 16px 10px}
+.bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
+.bookc .mbar{margin-top:8px}
+.qimg.xi{margin-top:14px}
 </style>
 </head>
 <body>
@@ -826,14 +831,15 @@ function buildData(){
   D.subjects.forEach(s=>{SUBJ[s.id]=s;(function walk(list,parent,lv){(list||[]).forEach(n=>{CODE[n.code]={code:n.code,name:n.name,subject:s.id,parent,level:lv};walk(n.children,n.code,lv+1)})})(s.toc,null,1)});
   D.exams.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   D.exams.forEach(e=>{EXAM[e.id]=e;(e.questions||[]).forEach(q=>{const id=q.id||`${e.id}|${q.subject}|${q.no}`;const o=Object.assign({},q,{id,exam:e.id,codes:q.codes||[],keywords:q.keywords||[]});Q.push(o);QI[id]=o});
-    uniq((e.questions||[]).map(q=>q.subject)).forEach(s=>EXN[s]=(EXN[s]||0)+1)});
+    if(!e.book)uniq((e.questions||[]).map(q=>q.subject)).forEach(s=>EXN[s]=(EXN[s]||0)+1)});
   const eo={},so={};D.exams.forEach((e,i)=>eo[e.id]=i);D.subjects.forEach((s,i)=>so[s.id]=i);
-  Q.sort((a,b)=>(eo[a.exam]-eo[b.exam])||((so[a.subject]??99)-(so[b.subject]??99))||(a.no-b.no));
+  Q.sort((a,b)=>(eo[a.exam]-eo[b.exam])||((so[a.subject]??99)-(so[b.subject]??99))||((a.ord??a.no)-(b.ord??b.no)));
 }
+const realExams=()=>D.exams.filter(e=>!e.book),bookExams=()=>D.exams.filter(e=>e.book);
 const subjName=id=>SUBJ[id]?.name||id;
 const subjShort=id=>SUBJ[id]?.short||subjName(id);
 const examName=id=>EXAM[id]?.name||id;
-const qLabel=q=>`${EXAM[q.exam]?.short||examName(q.exam)} ${subjShort(q.subject)} ${q.no}번`;
+const qLabel=q=>EXAM[q.exam]?.book?`${EXAM[q.exam].short} ${q.part}-${q.no}번`:`${EXAM[q.exam]?.short||examName(q.exam)} ${subjShort(q.subject)} ${q.no}번`;
 const answers=q=>[].concat(q.answer).map(Number);
 const nChoices=q=>(q.choices&&q.choices.length)||q.n||4;
 
@@ -858,11 +864,12 @@ const isWrong=id=>!S.resolved[id]&&att(id).some(x=>!x.ok);
 function record(id,c,src){const q=QI[id];if(!q)return false;const ok=answers(q).includes(+c);(S.attempts[id]=S.attempts[id]||[]).push({t:now(),c:+c,ok,src});if(!ok&&S.resolved[id]){delete S.resolved[id];touch('r:'+id)}return ok}
 
 /* groups */
-const TYPE_LABEL={exam:'회차',examsub:'회차',subject:'과목',chapter:'단원',section:'세부단원',keyword:'키워드',mark:'북마크',check:'체크',wrong:'오답',round:'회독',omr:'채점'};
+const TYPE_LABEL={bookch:'교재',exam:'회차',examsub:'회차',subject:'과목',chapter:'단원',section:'세부단원',keyword:'키워드',mark:'북마크',check:'체크',wrong:'오답',round:'회독',omr:'채점'};
 function groupQs(t,k){switch(t){
   case 'exam':return Q.filter(q=>q.exam===k);
   case 'examsub':{const [e,s]=k.split('~');return Q.filter(q=>q.exam===e&&q.subject===s)}
   case 'subject':return Q.filter(q=>q.subject===k);
+  case 'bookch':{const [e,c]=k.split('~');return Q.filter(q=>q.exam===e&&(!c||hasCode(q,c)))}
   case 'chapter':case 'section':case 'code':return Q.filter(q=>hasCode(q,k));
   case 'keyword':return Q.filter(q=>q.keywords.includes(k));
   case 'area':return areaQs(k);
@@ -874,6 +881,7 @@ function groupName(t,k){switch(t){
   case 'exam':return examName(k);
   case 'examsub':{const [e,s]=k.split('~');return `${examName(e)} ${subjName(s)}`}
   case 'subject':return subjName(k);
+  case 'bookch':{const [e,c]=k.split('~');return c?`${EXAM[e]?.short||''} · ${codeName(c)}`:examName(e)}
   case 'keyword':return k;
   case 'area':return areaName(k);
   case 'mark':return '북마크';
@@ -1038,7 +1046,7 @@ PAGES.pick=(type='exam',sub='')=>{
   const filt=type==='chapter'||type==='keyword';
   let h=hero(topBar(T)+(filt?subjPills(sub,k=>`#pick/${type}/${k}`):''),'slim');
   if(!Q.length)return h+noData();
-  if(type==='exam')h+=D.exams.map(e=>{const qs=groupQs('exam',e.id);return growRow(`#group/exam/${enc(e.id)}`,esc(e.name),`${esc(e.date||'')} · ${uniq(qs.map(q=>subjShort(q.subject))).join('·')} · ${qs.length}문항`,qs)}).join('');
+  if(type==='exam')h+=realExams().map(e=>{const qs=groupQs('exam',e.id);return growRow(`#group/exam/${enc(e.id)}`,esc(e.name),`${esc(e.date||'')} · ${uniq(qs.map(q=>subjShort(q.subject))).join('·')} · ${qs.length}문항`,qs)}).join('');
   if(type==='subject')h+=D.subjects.map(s=>{const qs=groupQs('subject',s.id);return growRow(`#group/subject/${s.id}`,esc(s.name),`${qs.length}문항 · 기출 ${EXN[s.id]||0}회차`,qs)}).join('');
   if(type==='chapter'){
     D.subjects.filter(s=>!sub||s.id===sub).forEach(s=>{
@@ -1058,6 +1066,21 @@ PAGES.pick=(type='exam',sub='')=>{
   }
   return h;
 };
+
+/* ================= book ================= */
+PAGES.book=eid=>{
+  const e=EXAM[eid];let h=hero(topBar(e?e.name:'교재 기출'),'slim');
+  if(!e)return h+'<p class="empty">교재 데이터를 찾을 수 없습니다</p>';
+  const all=groupQs('exam',eid),s=SUBJ[all[0]?.subject];
+  h+=growRow(`#group/bookch/${enc(eid+'~')}`,'전체 단원',`${all.length}문항`,all);
+  (s?.toc||[]).forEach(c=>{
+    const cq=groupQs('bookch',`${eid}~${c.code}`);if(!cq.length)return;
+    h+=`<div class="subhead">PART ${+c.code.split('-')[1]} ${esc(c.name)}</div>`;
+    (c.children||[]).forEach(x=>{const qs=groupQs('bookch',`${eid}~${x.code}`);if(qs.length)h+=growRow(`#group/bookch/${enc(eid+'~'+x.code)}`,esc(x.name),`${qs.length}문항`,qs,'lv2')});
+  });
+  return h;
+};
+AFTER.book=growAll;
 
 /* ================= group ================= */
 PAGES.group=(type,key)=>{
@@ -1108,8 +1131,8 @@ PAGES.quiz=sid=>{
     :q.choices.map((c,i)=>`<div class="crow-wrap"><button class="crow${cls(i+1)}" onclick="choose('${sid}',${i+1})"><span class="cmark">${reveal&&ans.includes(i+1)?ic('ok'):reveal&&+chosen===i+1?ic('no'):''}</span><span class="cn">${NUM[i]}</span><span class="ct">${fmt(c)}</span></button>${ckBtn(sid,i+1,sc,gc)}</div>`).join('');
   const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
   const chap=qChapters(q)[0],sec=qSections(q)[0];
-  h+=`<div class="qwrap"><div class="qhead"><div class="qsrc">${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번</div><div class="qtools"><button class="qt ck ${gc.q?'on':''}" onclick="addQCheck('${sid}',1)" data-lp="addQCheck('${sid}',-1)" aria-label="이 문제 체크 (꾹 누르면 빼기)" title="이 문제 체크 +1 (Ctrl+Enter) · 꾹 누르면 -1">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
-    <h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}
+  h+=`<div class="qwrap"><div class="qhead"><div class="qsrc">${EXAM[q.exam]?.book?`${esc(examName(q.exam))} · PART ${q.part} · ${q.no}번`:`${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번`}${q.bp?` · 기본서 P.${q.bp}`:''}</div><div class="qtools"><button class="qt ck ${gc.q?'on':''}" onclick="addQCheck('${sid}',1)" data-lp="addQCheck('${sid}',-1)" aria-label="이 문제 체크 (꾹 누르면 빼기)" title="이 문제 체크 +1 (Ctrl+Enter) · 꾹 누르면 -1">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
+    ${q.qi?'':`<h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>`}${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
     <div class="choices">${choices}</div>
@@ -1118,7 +1141,7 @@ PAGES.quiz=sid=>{
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
     h+=`<div class="verdict ${ok?'ok':'no'}">${ic(ok?'check':'x')}${ok?'정답':'오답'}<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')}${ok?'':` · 내 답 ${NUM[chosen-1]}`}</span></div>
-    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:'<div class="exp none">등록된 해설이 없습니다</div>'}
+    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.xi?`<img class="qimg xi" data-src="${esc(q.xi)}" alt="해설">`:''}${q.explain||q.xi?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
     <div class="retry-row"><button class="pill w" onclick="retryQ('${sid}')">${ic('undo')} 다시 풀기</button></div>
     ${unitHTML(chap,sec)}${tagsHTML(q)}`;
     if(q.cx&&q.cx.some(Boolean)){
@@ -1282,11 +1305,11 @@ function setQnote(el){const k=el.dataset.a;touch('q:'+k);if(el.value.trim())S.qn
 // w: 과목 25문항 중 출제비중(%) — 공개된 과목별 출제유형 분석 기준, 연도별 변동 있음
 const AREAS={
   FS:[
-    {name:'연소이론',w:20,n:'4~6',codes:['FS-03','FS-05'],pt:'최소발화에너지, 폭발(분진·폭연·폭굉), 연소생성물'},
-    {name:'화재이론',w:16,n:'3~5',codes:['FS-04','FS-08','FS-09'],pt:'화재급수, 화재하중, 위험물 특성·소화, 구획실화재'},
-    {name:'소화이론',w:36,n:'8~10',codes:['FS-06','FS-07'],pt:'소화약제(포·할로겐·불활성기체), 감지기, 스프링클러·제연설비'},
-    {name:'소방조직',w:8,n:'1~2',codes:['FS-01'],pt:'소방역사, 소방신호'},
-    {name:'재난관리',w:8,n:'1~2',codes:['FS-02'],pt:'재난분류, 재난관리단계·기구'},
+    {name:'연소이론',w:20,n:'4~6',codes:['FS-01'],pt:'최소발화에너지, 폭발(분진·폭연·폭굉), 연소생성물'},
+    {name:'화재이론',w:16,n:'3~5',codes:['FS-02','FS-04','FS-05'],pt:'화재급수, 화재하중, 위험물 특성·소화, 구획실화재'},
+    {name:'소화이론',w:36,n:'8~10',codes:['FS-03','FS-06'],pt:'소화약제(포·할로겐·불활성기체), 감지기, 스프링클러·제연설비'},
+    {name:'소방조직',w:8,n:'1~2',codes:['FS-07','FS-08'],pt:'소방역사, 소방신호'},
+    {name:'재난관리',w:8,n:'1~2',codes:['FS-09'],pt:'재난분류, 재난관리단계·기구'},
   ],
   FL:[
     {name:'소방기본법',w:14,n:'3~4',codes:['FL-01'],pt:'국고보조 장비, 권한·벌칙'},
@@ -1445,7 +1468,7 @@ function roundsPage(sub){
   let h=hero(topBar('회차별로 풀어보기')+pills(D.subjects.filter(s=>EXN[s.id]).map(s=>[s.id,s.name]),sub,k=>`#pick/exam/${k}`),'slim');
   if(!Q.length)return h+noData();
   const live=liveSessions();
-  return h+D.exams.filter(e=>groupQs('examsub',`${e.id}~${sub}`).length).map(e=>{
+  return h+realExams().filter(e=>groupQs('examsub',`${e.id}~${sub}`).length).map(e=>{
     const key=`${e.id}~${sub}`,rs=S.rounds[key]||[],qs=groupQs('examsub',key),lv=live.find(s=>s.kind==='examsub'&&s.key===key);
     const tag=/가답안/.test(e.name)?'<small>가답안</small>':'';
     return `<div class="rcard"><div class="rc-l"><div class="rc-t"><b>${esc(e.id)}</b><span>${rs.length?`${rs.length}회독 최근 ${rs[rs.length-1].score}점`:'아직 회독 기록 없음'}</span>${tag}</div>
@@ -1539,7 +1562,7 @@ function weakGroups(type,sub){
     let w,subj;
     if(type==='chapter'){subj=codeSubject(k);const tot=Q.filter(q=>q.subject===subj).length;w=tot?qs.length/tot:0}
     else if(type==='section'){subj=codeSubject(k);w=qs.length/(EXN[subj]||1)}
-    else{const ss=uniq(qs.map(q=>q.subject));subj=ss.length===1?ss[0]:'';w=qs.length/((sub?EXN[sub]:D.exams.length)||1)}
+    else{const ss=uniq(qs.map(q=>q.subject));subj=ss.length===1?ss[0]:'';w=qs.length/((sub?EXN[sub]:realExams().length)||1)}
     return{type,key:k,name:type==='keyword'?k:groupName('code',k),subj,qs,a:agg(qs),w};
   });
 }
@@ -1571,7 +1594,7 @@ PAGES.stats=(tab='focus',sub='')=>{
       +(days.length?days.map(d=>{const v=by[d],r=v.ok/(v.ok+v.no);return `<div class="drow"><div class="dl">${d.slice(5).replace('-','/')}</div><div class="db"><div class="hb g" style="width:${v.ok/mx*90}%">${v.ok}</div><div class="hb r" style="width:${v.no/mx*90}%">${v.no}</div><div class="hb b" style="width:${r*90}%">${pct(r)}</div></div></div>`}).join(''):'<p class="empty">아직 풀이 기록이 없습니다</p>');
   }
   if(tab==='exam'){
-    const rows=D.exams.map(e=>({e,r:latestRate(groupQs('exam',e.id))})).filter(x=>x.r.n);
+    const rows=realExams().map(e=>({e,r:latestRate(groupQs('exam',e.id))})).filter(x=>x.r.n);
     h+=intro('회차별 성적','푼 회차의 성적을 최신순으로 확인하세요.<br>회차별 합격선과 비교해<br>합격 가능성을 가늠할 수 있습니다.','*각 문항의 가장 최근 풀이 기준입니다.')
       +`<div class="legend"><span><i class="c-g"></i>내 정답률</span><span><i class="c-b"></i>합격선</span></div>`
       +(rows.length?rows.map(({e,r})=>`<div class="drow"><div class="dl">${esc(e.short||e.name)}</div><div class="db"><div class="hb g" style="width:${r.rate*90}%">${pct(r.rate)}</div>${e.cutline!=null?`<div class="hb b" style="width:${e.cutline*.9}%">${e.cutline}%</div>`:''}</div></div>`).join(''):'<p class="empty">아직 푼 회차가 없습니다</p>');
@@ -1647,7 +1670,7 @@ PAGES.omr=(eid,sub)=>{
   if(!eid||!sub||!EXAM[eid]){
     let h=hero(topBar('시험지 채점하기')+`<div class="gcap" style="margin-top:6px">종이로 푼 기출의 답을 입력하면 채점하고 오답노트에 반영합니다</div>`,'slim');
     if(!Q.length)return h+noData();
-    return h+D.exams.map(e=>`<div class="card"><h4>${esc(e.name)}</h4><div class="row-btns">${uniq(groupQs('exam',e.id).map(q=>q.subject)).map(s=>`<a class="pill sm b" href="#omr/${enc(e.id)}/${s}">${esc(subjName(s))}</a>`).join('')}</div></div>`).join('');
+    return h+realExams().map(e=>`<div class="card"><h4>${esc(e.name)}</h4><div class="row-btns">${uniq(groupQs('exam',e.id).map(q=>q.subject)).map(s=>`<a class="pill sm b" href="#omr/${enc(e.id)}/${s}">${esc(subjName(s))}</a>`).join('')}</div></div>`).join('');
   }
   if(OMRK!==eid+sub){OMR={};OMRK=eid+sub}
   const qs=groupQs('examsub',`${eid}~${sub}`);
@@ -1811,7 +1834,7 @@ function hydrateImgs(){
   document.querySelectorAll('img[data-src]').forEach(im=>{const p=im.dataset.src;im.removeAttribute('data-src');blobImg(p).then(u=>{im.src=u}).catch(()=>{im.alt='이미지를 불러오지 못했습니다';im.classList.add('imgerr')})});
 }
 async function cacheAll(btn){
-  const ps=uniq(Q.flatMap(q=>q.img?[].concat(q.img):[]));btn.disabled=true;let done=0,fail=0;
+  const ps=uniq(Q.flatMap(q=>(q.img?[].concat(q.img):[]).concat(q.xi?[q.xi]:[])));btn.disabled=true;let done=0,fail=0;
   for(let i=0;i<ps.length;i+=6){
     await Promise.all(ps.slice(i,i+6).map(p=>blobImg(p).catch(()=>{fail++})));
     done=Math.min(ps.length,i+6);btn.textContent=`저장 중 ${done}/${ps.length}`;
@@ -1865,10 +1888,14 @@ async function uploadLocal(){
     msg('#upmsg','로컬 파일 읽는 중...');
     const man=await (await fetch('private/manifest.json',{cache:'no-store'})).json();
     const files=[new File([await (await fetch('private/exam.json',{cache:'no-store'})).blob()],'exam.json',{type:'application/json'})];
-    for(const n of man.images){const b=await (await fetch('private/images/'+encodeURIComponent(n))).blob();files.push(new File([b],n,{type:'image/png'}))}
+    const tk=await accessToken();
+    const have=new Set((await (await fetch(`${SB_URL}/storage/v1/object/list/fx-images`,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({prefix:'',limit:100000})})).json()).map(o=>o.name));
+    const todo=man.images.filter(n=>!have.has(n));
+    for(let i=0;i<todo.length;i++){const n=todo[i];if(i%50===0)msg('#upmsg',`새 이미지 읽는 중 ${i}/${todo.length}`);const b=await (await fetch('private/images/'+encodeURIComponent(n))).blob();files.push(new File([b],n,{type:imgType(n)}))}
     await uploadContent({files,value:''});
   }catch(e){msg('#upmsg','로컬 업로드 실패: '+e.message,true)}
 }
+const imgType=n=>/\.webp$/i.test(n)?'image/webp':/\.jpe?g$/i.test(n)?'image/jpeg':'image/png';
 async function uploadContent(input){
   const files=[...input.files];input.value='';
   const ej=files.find(f=>/(^|\/)exam\.json$/.test(f.webkitRelativePath||f.name));
@@ -1877,7 +1904,7 @@ async function uploadContent(input){
   try{
     const tk=await accessToken();let done=0,fail=0;
     for(let i=0;i<imgs.length;i+=5){
-      await Promise.all(imgs.slice(i,i+5).map(f=>fetch(`${SB_URL}/storage/v1/object/fx-images/${encodeURIComponent(f.name)}`,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+tk,'x-upsert':'true','Content-Type':f.type||'image/png'},body:f}).then(r=>{if(!r.ok)fail++}).catch(()=>{fail++})));
+      await Promise.all(imgs.slice(i,i+5).map(f=>fetch(`${SB_URL}/storage/v1/object/fx-images/${encodeURIComponent(f.name)}`,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+tk,'x-upsert':'true','Content-Type':f.type||imgType(f.name)},body:f}).then(r=>{if(!r.ok)fail++}).catch(()=>{fail++})));
       done=Math.min(imgs.length,i+5);msg('#upmsg',`이미지 업로드 ${done}/${imgs.length}`);
     }
     if(ej){
@@ -1947,6 +1974,7 @@ PAGES.home=()=>{
     <div class="today"><div><b>${st.n}</b><span>오늘 푼 문제</span></div><div><b>${st.n?pct(st.ok/st.n):'-'}</b><span>오늘 정답률</span></div><div><b>${sk}<small>일</small></b><span>연속 학습</span></div></div>`
   +(ADMIN.pending?`<a class="card inst" href="#settings" style="display:block"><div class="inst-row"><div><b>가입 승인 대기 ${ADMIN.pending}명</b><small>설정 → 회원 관리에서 승인해 주세요</small></div><span class="pill">확인</span></div></a>`:'')
   +(live.length?`<div class="sec">이어서 풀기</div><div class="cont">${live.slice(0,8).map(s=>{const a=answered(s);return `<a class="cc" href="#quiz/${s.id}"><small>${esc(TYPE_LABEL[s.kind]||'풀이')}</small><b>${esc(s.short||s.title)}</b><div class="ccbar"><i style="width:${a/s.ids.length*100}%"></i></div><span>${a} / ${s.ids.length}</span></a>`}).join('')}</div>`:'')
+  +(bookExams().length?`<div class="sec">교재 기출</div>${bookExams().map(e=>{const qs=groupQs('exam',e.id),lr=latestRate(qs);return `<a class="card bookc" href="#book/${enc(e.id)}"><div><b>${esc(e.name)}</b><small>단원별 ${qs.length}문항 · 해설 포함${lr.n?` · 정답률 ${pct(lr.rate)}`:''}</small><div class="mbar"><i style="width:${qs.length?lr.n/qs.length*100:0}%"></i></div></div><span class="gbadge ${lr.n?'':'none'}">${lr.n?`${lr.n}/${qs.length}`:'시작'}</span></a>`}).join('')}`:'')
   +`<div class="sec">학습 메뉴</div><div class="sc-grid">${SC.map(([l,h,i,c])=>`<a class="sc" href="${h}"><i class="${c}">${ic(i)}</i><span>${l}</span></a>`).join('')}</div>`
   +installCard(true)
   +(sch.length||S.examDate?`<div class="sec">시험 일정</div><ul class="sched">${S.examDate?`<li><b>내 목표 시험</b><span>${S.examDate}</span></li>`:''}${sch.map(s=>`<li><b>${esc(s.name)}</b><span>${esc(s.date||'미정')}</span></li>`).join('')}</ul>`:'')
