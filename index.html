@@ -622,6 +622,15 @@ html,body{background:#e9e3da}
 .bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
+.qtimer{display:inline-flex;align-items:center;gap:5px;border:0;background:var(--coal,#1a1412);color:#fff;border-radius:999px;padding:5px 11px;font:700 13px/1 inherit;font-variant-numeric:tabular-nums;margin:0 0 8px;cursor:pointer}
+.qtimer .ic{width:15px;height:15px}.qtimer em{font-style:normal;font-weight:500;opacity:.8;margin-left:2px}
+.qtimer.pause{background:#8a7f75}.qtimer.warn{background:var(--fire)}.qtimer.done{background:#efe9e1;color:#5b5047;cursor:default}
+.card.mock{display:flex;align-items:center;gap:12px;margin:0 16px 12px}.card.mock>div{flex:1}.card.mock b{display:block;font-size:16px}.card.mock small{color:var(--muted);font-size:13px}.card.mock .btn{width:auto;padding:0 20px}
+.rnd .rrow{display:flex;gap:12px;align-items:center;margin:10px 0}.rnd .rrow>span{flex:none;width:52px;font-weight:700;font-size:14px}.rnd .row-btns{flex-wrap:wrap}
+.ckc,.ckc.on{border:0!important;background:transparent!important;box-shadow:none!important;width:36px}
+.ckc .ic{width:22px;height:22px}.ckc{color:#cfc5b9}.ckc.on{color:var(--green)}
+.cnum-ck .ckc{width:58px;height:30px}
+.ckc i{top:-2px;right:-2px}
 .bs-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}.bs-row .pill{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
 .bs-row .pill svg,.bs-mini svg{width:15px;height:15px}
 .bs-sub{display:flex;justify-content:space-between;align-items:center;gap:8px}
@@ -849,7 +858,7 @@ const realExams=()=>D.exams.filter(e=>!e.book),bookExams=()=>D.exams.filter(e=>e
 const subjName=id=>SUBJ[id]?.name||id;
 const subjShort=id=>SUBJ[id]?.short||subjName(id);
 const examName=id=>EXAM[id]?.name||id;
-const qLabel=q=>EXAM[q.exam]?.book?`${EXAM[q.exam].short} ${q.part}-${q.no}번`:`${EXAM[q.exam]?.short||examName(q.exam)} ${subjShort(q.subject)} ${q.no}번`;
+const qLabel=q=>EXAM[q.exam]?.book?`${EXAM[q.exam].short} ${q.lbl||q.part}-${q.no}번`:`${EXAM[q.exam]?.short||examName(q.exam)} ${subjShort(q.subject)} ${q.no}번`;
 const answers=q=>[].concat(q.answer).map(Number);
 const nChoices=q=>(q.choices&&q.choices.length)||q.n||4;
 
@@ -874,7 +883,7 @@ const isWrong=id=>!S.resolved[id]&&att(id).some(x=>!x.ok);
 function record(id,c,src){const q=QI[id];if(!q)return false;const ok=answers(q).includes(+c);(S.attempts[id]=S.attempts[id]||[]).push({t:now(),c:+c,ok,src});if(!ok&&S.resolved[id]){delete S.resolved[id];touch('r:'+id)}return ok}
 
 /* groups */
-const TYPE_LABEL={bookch:'교재',exam:'회차',examsub:'회차',subject:'과목',chapter:'단원',section:'세부단원',keyword:'키워드',mark:'북마크',check:'체크',wrong:'오답',round:'회독',omr:'채점'};
+const TYPE_LABEL={random:'랜덤',bookch:'교재',exam:'회차',examsub:'회차',subject:'과목',chapter:'단원',section:'세부단원',keyword:'키워드',mark:'북마크',check:'체크',wrong:'오답',round:'회독',omr:'채점'};
 function groupQs(t,k){switch(t){
   case 'exam':return Q.filter(q=>q.exam===k);
   case 'examsub':{const [e,s]=k.split('~');return Q.filter(q=>q.exam===e&&q.subject===s)}
@@ -1077,6 +1086,38 @@ PAGES.pick=(type='exam',sub='')=>{
   return h;
 };
 
+/* ================= 랜덤 풀이 ================= */
+const RND=Object.assign({sub:'',src:'exam',n:25,exam:false,timer:true},(()=>{try{return JSON.parse(localStorage.getItem('fx_rnd')||'{}')}catch(e){return {}}})());
+function rndSet(k,v){RND[k]=v;try{localStorage.setItem('fx_rnd',JSON.stringify(RND))}catch(e){}rerender()}
+function rndPool(sub,src){return Q.filter(q=>(!sub||q.subject===sub)&&(src==='all'||(src==='book'?EXAM[q.exam]?.book:!EXAM[q.exam]?.book))&&(q.choices||q.qi||q.choiceImg||q.n))}
+PAGES.random=()=>{
+  let h=hero(topBar('기출 랜덤 풀이'),'slim');
+  if(!Q.length)return h+noData();
+  h+=intro('기출 랜덤 풀이','기출 전체에서 무작위로 뽑아 새 모의고사처럼 풀어요','*풀 때마다 문제가 새로 섞여요');
+  const opt=(k,v,l)=>`<button class="pill sm ${RND[k]===v?'b':'w'}" onclick="rndSet('${k}',${JSON.stringify(v).replace(/"/g,"'")})">${l}</button>`;
+  const pool=rndPool(RND.sub,RND.src);
+  h+=`<div class="card mock"><div><b>실전 모의고사</b><small>학개론·법규·행정법 공채 기출 각 25문항 · 75분 · 마지막에 채점</small></div><button class="btn" onclick="startMock()">시작</button></div>`;
+  h+=`<div class="card rnd"><h4>직접 골라 섞기</h4>
+    <div class="rrow"><span>과목</span><div class="row-btns">${opt('sub','','전체')}${D.subjects.map(x=>opt('sub',x.id,esc(x.short||x.name))).join('')}</div></div>
+    <div class="rrow"><span>범위</span><div class="row-btns">${opt('src','exam','공채 기출')}${opt('src','book','교재 기출')}${opt('src','all','전부')}</div></div>
+    <div class="rrow"><span>문항 수</span><div class="row-btns">${[10,20,25,50,100].map(n=>opt('n',n,n+'문항')).join('')}</div></div>
+    <div class="opts"><label><input type="checkbox" ${RND.exam?'checked':''} onchange="rndSet('exam',this.checked)">실전 모드 (마지막에 채점)</label><label><input type="checkbox" ${RND.timer?'checked':''} onchange="rndSet('timer',this.checked)">시간 제한 (문항당 1분)</label></div>
+    <button class="btn full" style="margin-top:12px" onclick="startRandom()" ${pool.length?'':'disabled'}>섞어서 풀기<small>후보 ${pool.length}문항 중 ${Math.min(RND.n,pool.length)}문항</small></button></div>`;
+  return h;
+};
+function startRandom(){
+  const pool=shuffle([...rndPool(RND.sub,RND.src)]).slice(0,RND.n);if(!pool.length)return;
+  const t=`랜덤 ${RND.sub?subjShort(RND.sub):'전과목'} ${pool.length}문항`;
+  startSession('random','',t,pool.map(q=>q.id),{exam:RND.exam,short:t});
+  const s=Object.values(S.sessions).sort((a,b)=>b.created-a.created)[0];if(s&&RND.timer){s.lim=pool.length*60;save()}
+}
+function startMock(){
+  const ids=[];['FS','FL','AL'].forEach(sb=>{shuffle([...rndPool(sb,'exam')]).slice(0,25).forEach(q=>ids.push(q.id))});
+  if(!ids.length)return;
+  startSession('random','','실전 모의고사',ids,{exam:true,short:'실전 모의고사'});
+  const s=Object.values(S.sessions).sort((a,b)=>b.created-a.created)[0];if(s){s.lim=75*60;save()}
+}
+
 /* ================= 기본서 ================= */
 const BS=(sub)=>SUBJ[sub]?.basic;
 const bsKey=(b,pg)=>`${b.prefix}${String(pg).padStart(3,'0')}.webp`;
@@ -1105,19 +1146,82 @@ AFTER.basic=(sub,pg)=>{
 };
 
 /* ================= book ================= */
-PAGES.book=eid=>{
-  const e=EXAM[eid];let h=hero(topBar(e?e.name:'교재 기출'),'slim');
-  if(!e)return h+'<p class="empty">교재 데이터를 찾을 수 없습니다</p>';
-  const all=groupQs('exam',eid),s=SUBJ[all[0]?.subject];
-  h+=growRow(`#group/bookch/${enc(eid+'~')}`,'전체 단원',`${all.length}문항`,all);
-  (s?.toc||[]).forEach(c=>{
-    const cq=groupQs('bookch',`${eid}~${c.code}`);if(!cq.length)return;
-    h+=`<div class="subhead bs-sub"><span>PART ${+c.code.split('-')[1]} ${esc(c.name)}</span>${c.bp?bsLink(s.id,c.bp[0],`기본서 P.${c.bp[0]}~${c.bp[1]}`,'bs-mini'):''}</div>`;
-    (c.children||[]).forEach(x=>{const qs=groupQs('bookch',`${eid}~${x.code}`);if(qs.length)h+=growRow(`#group/bookch/${enc(eid+'~'+x.code)}`,esc(x.name),`${qs.length}문항`,qs,'lv2')});
+const SUB_ORDER=['FS','FL','AL'];
+const bookSubOf=e=>groupQs('exam',e.id)[0]?.subject;
+const bookSubs=()=>{const ss=uniq(bookExams().map(bookSubOf).filter(Boolean));return SUB_ORDER.filter(x=>ss.includes(x)).concat(ss.filter(x=>!SUB_ORDER.includes(x)))};
+const booksOf=sub=>bookExams().filter(e=>bookSubOf(e)===sub);
+const partLbl=(sub,c)=>sub==='AL'?`제${+c.code.split('-')[1]}편`:`PART ${+c.code.split('-')[1]}`;
+const RP={get(k){try{return (JSON.parse(localStorage.getItem('fx_read')||'{}'))[k]||0}catch(e){return 0}},set(k,v){try{const o=JSON.parse(localStorage.getItem('fx_read')||'{}');o[k]=v;localStorage.setItem('fx_read',JSON.stringify(o))}catch(e){}}};
+const BTAB=[['solve','문풀'],['read','정독'],['theory','이론']];
+PAGES.books=(tab='solve')=>{
+  if(!BTAB.some(([k])=>k===tab))tab='solve';
+  let h=hero(topBar('기출 교재'),'slim');
+  const subs=bookSubs();if(!subs.length)return h+'<p class="empty">교재 데이터가 없습니다</p>';
+  h+=intro('기출 교재','과목을 고르고 문풀 · 정독 · 이론(기본서) 중에 골라 공부하세요');
+  return h+subs.map(sb=>{const qs=booksOf(sb).flatMap(e=>groupQs('exam',e.id)),lr=latestRate(qs);
+    const t=tab==='theory'&&!BS(sb)?'solve':tab;
+    return `<a class="card bookc" href="#sbook/${sb}/${t}"><div><b>${esc(subjName(sb))} 기출</b><small>${booksOf(sb).map(e=>esc(e.short)).join(' · ')} · ${qs.length}문항${BS(sb)?' · 기본서':''}</small><div class="mbar"><i style="width:${qs.length?lr.n/qs.length*100:0}%"></i></div></div><span class="gbadge ${lr.n?'':'none'}">${lr.n?`${lr.n}/${qs.length}`:'시작'}</span></a>`}).join('');
+};
+PAGES.book=eid=>{const e=EXAM[eid],sb=e&&bookSubOf(e);setTimeout(()=>location.replace(sb?`#sbook/${sb}`:'#books'));return ''};
+PAGES.sbook=(sub,tab='solve')=>{
+  if(!BTAB.some(([k])=>k===tab)||(tab==='theory'&&!BS(sub)))tab='solve';
+  const s=SUBJ[sub];let h=hero(topBar(`${s?esc(s.name):''} 기출`)+tabs(BTAB.filter(([k])=>k!=='theory'||BS(sub)),tab,t=>`#sbook/${sub}/${t}`),'slim');
+  if(!s)return h+'<p class="empty">과목을 찾을 수 없습니다</p>';
+  if(tab==='theory'){
+    const b=BS(sub);
+    h+=intro(b.name,'단원을 누르면 기본서 해당 쪽부터 펼쳐져요');
+    (s.toc||[]).forEach(c=>{
+      h+=`<div class="subhead bs-sub"><span>${partLbl(sub,c)} ${esc(c.name)}</span>${c.bp?`<small class="muted">P.${c.bp[0]}~${c.bp[1]}</small>`:''}</div>`;
+      const ch=(c.children||[]).filter(x=>x.bp);
+      if(ch.length)h+=ch.map(x=>`<a class="grow lv2" href="#basic/${sub}/${x.bp[0]}"><div class="gm"><b>${esc(x.name)}</b><small>기본서 P.${x.bp[0]}~${x.bp[1]}</small></div><span class="gbadge">펼치기</span></a>`).join('');
+      else if(c.bp)h+=`<a class="grow lv2" href="#basic/${sub}/${c.bp[0]}"><div class="gm"><b>${esc(c.name)}</b><small>기본서 P.${c.bp[0]}~${c.bp[1]}</small></div><span class="gbadge">펼치기</span></a>`;
+      else h+=`<p class="muted" style="margin:0 24px 10px;font-size:13px">이 단원은 기본서 파일이 없어요</p>`;
+    });
+    return h;
+  }
+  const read=tab==='read';
+  h+=read?intro('정독','문제와 정답·해설을 한 화면에서 차례로 읽어요. 읽던 곳은 기억해 둬요'):intro('문풀','단원별로 직접 풀고 채점해요. 틀린 문제는 오답노트에 쌓여요');
+  booksOf(sub).forEach(e=>{
+    const all=groupQs('exam',e.id);
+    if(booksOf(sub).length>1)h+=`<div class="subhead">${esc(e.name)}</div>`;
+    const row=(key,name,qs,cls)=>{
+      if(read){const k=`${e.id}~${key}`,p=RP.get(k);return `<a class="grow ${cls}" href="#read/${enc(k)}/${Math.min(p,qs.length-1)}"><div class="gm"><b>${name}</b><small>${qs.length}문항${p?` · ${p+1}번째 읽는 중`:''}</small><div class="mbar"><i style="width:${qs.length?(p+1)/qs.length*100*(p?1:0):0}%"></i></div></div><span class="gbadge ${p?'':'none'}">${p?'이어 읽기':'읽기'}</span></a>`}
+      return growRow(`#group/bookch/${enc(e.id+'~'+key)}`,name,`${qs.length}문항`,qs,cls)};
+    h+=row('','전체 단원',all,'');
+    (s.toc||[]).forEach(c=>{
+      const cq=groupQs('bookch',`${e.id}~${c.code}`);if(!cq.length)return;
+      h+=`<div class="subhead bs-sub"><span>${partLbl(sub,c)} ${esc(c.name)}</span>${c.bp&&!read?bsLink(sub,c.bp[0],`기본서 P.${c.bp[0]}~`,'bs-mini'):''}</div>`;
+      (c.children||[]).forEach(x=>{const qs=groupQs('bookch',`${e.id}~${x.code}`);if(qs.length)h+=row(x.code,esc(x.name),qs,'lv2')});
+    });
   });
   return h;
 };
-AFTER.book=growAll;
+AFTER.sbook=growAll;
+PAGES.read=(key,idx)=>{
+  const qs=groupQs('bookch',key);const [eid,code]=key.split('~');
+  const title=code?codeName(code):(EXAM[eid]?.name||'정독');
+  let h=hero(topBar(esc(title)),'slim');
+  if(!qs.length)return h+'<p class="empty">문제가 없습니다</p>';
+  idx=Math.min(qs.length-1,Math.max(0,+idx||0));RP.set(key,idx);
+  const q=qs[idx],ans=answers(q);
+  h+=`<div class="qwrap rd" id="rdv"><div class="qhead"><div class="qsrc">${esc(q.lbl||'PART '+q.part)} · ${q.no}번 · ${idx+1}/${qs.length}${q.bp?` · 기본서 P.${q.bp}`:''}</div></div>
+    ${(q.img?[].concat(q.img):[]).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join('')}
+    <div class="verdict ok rd-ans">${ic('check')}정답<span>${ans.map(a=>NUM[a-1]).join(' ')}</span></div>
+    ${q.xi?`<img class="qimg xi" data-src="${esc(q.xi)}" alt="해설">`:''}
+    ${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],'이 단원 기본서'):''})()}</div>`:''}
+  </div><div style="height:90px"></div>
+  <div class="qbar"><button class="qb" ${idx?'':'disabled'} onclick="rdGo(${idx-1})">이전</button><span class="qcount">${idx+1} / ${qs.length}</span><button class="qb main" ${idx<qs.length-1?'':'disabled'} onclick="rdGo(${idx+1})">다음</button></div>`;
+  return h;
+};
+function rdGo(i){const m=location.hash.match(/^#read\/([^/]+)\//);if(m)location.replace(`#read/${m[1]}/${i}`)}
+AFTER.read=(key,idx)=>{
+  const qs=groupQs('bookch',key);idx=+idx||0;
+  [idx+1,idx+2].forEach(i=>{const q=qs[i];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).catch(()=>{}))});
+  const el=document.getElementById('rdv');if(!el)return;let x0=0,y0=0,on=false;
+  el.addEventListener('pointerdown',e=>{on=true;x0=e.clientX;y0=e.clientY});
+  el.addEventListener('pointerup',e=>{if(!on)return;on=false;const dx=e.clientX-x0,dy=e.clientY-y0;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.5)return;const n=idx+(dx<0?1:-1);if(n>=0&&n<qs.length)rdGo(n)});
+};
+
 
 /* ================= group ================= */
 PAGES.group=(type,key)=>{
@@ -1170,7 +1274,7 @@ PAGES.quiz=sid=>{
     :q.choices.map((c,i)=>`<div class="crow-wrap"><button class="crow${cls(i+1)}" onclick="choose('${sid}',${i+1})"><span class="cmark">${reveal&&ans.includes(i+1)?ic('ok'):reveal&&+chosen===i+1?ic('no'):''}</span><span class="cn">${NUM[i]}</span><span class="ct">${fmt(c)}</span></button>${ckBtn(sid,i+1,sc,gc)}</div>`).join('');
   const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
   const chap=qChapters(q)[0],sec=qSections(q)[0];
-  h+=`<div class="qwrap"><div class="qhead"><div class="qsrc">${EXAM[q.exam]?.book?`${esc(examName(q.exam))} · PART ${q.part} · ${q.no}번`:`${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번`}${q.bp?` · 기본서 P.${q.bp}`:''}</div><div class="qtools"><button class="qt ck ${gc.q?'on':''}" onclick="addQCheck('${sid}',1)" data-lp="addQCheck('${sid}',-1)" aria-label="이 문제 체크 (꾹 누르면 빼기)" title="이 문제 체크 +1 (Ctrl+Enter) · 꾹 누르면 -1">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
+  h+=`<div class="qwrap"><div class="qhead">${timerChip(s)}<div class="qsrc">${EXAM[q.exam]?.book?`${esc(examName(q.exam))} · ${esc(q.lbl||'PART '+q.part)} · ${q.no}번`:`${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번`}${q.bp?` · 기본서 P.${q.bp}`:''}</div><div class="qtools"><button class="qt ck ${gc.q?'on':''}" onclick="addQCheck('${sid}',1)" data-lp="addQCheck('${sid}',-1)" aria-label="이 문제 체크 (꾹 누르면 빼기)" title="이 문제 체크 +1 (Ctrl+Enter) · 꾹 누르면 -1">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
     ${q.qi?'':`<h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>`}${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
@@ -1220,6 +1324,23 @@ function addCCheck(sid,n,d){
   chkClean(id);touch('k:'+id);s.updated=now();save();rerender();
 }
 const toggleQCheck=sid=>addQCheck(sid,1),toggleCCheck=(sid,n)=>addCCheck(sid,n,1);
+/* 타이머 */
+const fmtT=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
+function timerChip(s){
+  if(s.done)return s.el?`<span class="qtimer done">${ic('timer')}${fmtT(s.el)}</span>`:'';
+  const left=s.lim?s.lim-(s.el||0):null;
+  return `<button class="qtimer ${s.pause?'pause':''} ${left!=null&&left<300?'warn':''}" id="qtimer" onclick="togglePause('${s.id}')" title="누르면 일시정지">${ic('timer')}<span>${left!=null?fmtT(left):fmtT(s.el)}</span>${s.pause?'<em>일시정지</em>':''}</button>`;
+}
+function togglePause(sid){const s=S.sessions[sid];if(!s)return;s.pause=!s.pause;save();rerender()}
+setInterval(()=>{
+  const m=location.hash.match(/^#quiz\/([^/]+)/);if(!m||document.visibilityState!=='visible')return;
+  const s=S.sessions[m[1]];if(!s||s.done||s.pause)return;
+  s.el=(s.el||0)+1;
+  const el=document.querySelector('#qtimer span');
+  if(el){const left=s.lim?s.lim-s.el:null;el.textContent=left!=null?fmtT(left):fmtT(s.el);if(left!=null&&left<300)el.parentNode.classList.add('warn')}
+  if(s.el%15===0)LS.set('fx_state',S);
+  if(s.lim&&s.el>=s.lim&&!s.tu){s.tu=1;save();appAlert('시간이 끝났어요. 지금까지 푼 답으로 채점합니다.').then(()=>finish(s.id,true))}
+},1000);
 function ckBtn(sid,n,sc,gc){
   const cnt=(gc.c||{})[n]||0;
   return `<button class="ckc ${cnt?'on':''}" onclick="event.stopPropagation();addCCheck('${sid}',${n},1)" data-lp="addCCheck('${sid}',${n},-1)" aria-label="${n}번 지문 체크 (꾹 누르면 빼기)" title="${n}번 지문 체크 +1 (Ctrl+${n}) · 꾹 누르면 -1">${ic('ok')}${cnt?`<i>${cnt}</i>`:''}</button>`;
@@ -1231,6 +1352,8 @@ document.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.c
 document.addEventListener('click',e=>{if(LP.fired&&e.target.closest&&e.target.closest('[data-lp]')){e.preventDefault();e.stopPropagation();LP.fired=false}},true);
 /* ---------- 키보드 (아이패드 블루투스 키보드·PC) ---------- */
 document.addEventListener('keydown',e=>{
+  const rd=location.hash.match(/^#read\/([^/]+)\/(\d+)/);
+  if(rd&&!(e.target.closest&&e.target.closest('input,textarea'))&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();const n=+rd[2]+(e.key==='ArrowRight'?1:-1),L=groupQs('bookch',decodeURIComponent(rd[1])).length;if(n>=0&&n<L)rdGo(n);return}
   const bp=location.hash.match(/^#basic\/(\w+)\/(\d+)/);
   if(bp&&!(e.target.closest&&e.target.closest('input,textarea'))&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();bsGo(bp[1],+bp[2]+(e.key==='ArrowRight'?1:-1));return}
   const sheet=document.getElementById('sheet');
@@ -1354,19 +1477,19 @@ const AREAS={
   ],
   FL:[
     {name:'소방기본법',w:14,n:'3~4',codes:['FL-01'],pt:'국고보조 장비, 권한·벌칙'},
-    {name:'소방시설법',w:22,n:'5~6',codes:['FL-04'],pt:'기술기준, 점검·유지관리, 벌칙'},
-    {name:'화재예방법',w:18,n:'4~5',codes:['FL-03'],pt:'안전진단, 소방대상물 관리'},
-    {name:'소방시설공사업법',w:18,n:'4~5',codes:['FL-05'],pt:'등록·서류, 공사 절차·벌칙'},
-    {name:'위험물안전관리법',w:20,n:'4~6',codes:['FL-06'],pt:'저장·취급 기준, 허가·교육'},
-    {name:'화재조사법 등',w:8,n:'1~2',codes:['FL-02'],pt:'장비·절차 (변동 큼)'},
+    {name:'소방시설법',w:22,n:'5~6',codes:['FL-06'],pt:'기술기준, 점검·유지관리, 벌칙'},
+    {name:'화재예방법',w:18,n:'4~5',codes:['FL-05'],pt:'안전진단, 소방대상물 관리'},
+    {name:'소방시설공사업법',w:18,n:'4~5',codes:['FL-02'],pt:'등록·서류, 공사 절차·벌칙'},
+    {name:'위험물안전관리법',w:20,n:'4~6',codes:['FL-03'],pt:'저장·취급 기준, 허가·교육'},
+    {name:'화재조사법 등',w:8,n:'1~2',codes:['FL-04','FL-07'],pt:'장비·절차 (변동 큼)'},
   ],
   AL:[
     {name:'서론·일반원칙',w:10,n:'2~3',codes:['AL-01'],pt:'법치행정, 신뢰보호, 비례원칙'},
-    {name:'행정작용법',w:32,n:'7~9',codes:['AL-02','AL-03-01'],pt:'행정행위(효력·하자·취소), 입법·계획·지도, 행정절차법'},
+    {name:'행정작용법',w:32,n:'7~9',codes:['AL-02','AL-03-20','AL-03-21'],pt:'행정행위(효력·하자·취소), 입법·계획·지도, 행정절차법'},
     {name:'실효성 확보수단',w:20,n:'4~6',codes:['AL-04'],pt:'대집행, 이행강제금, 직접·즉시강제'},
     {name:'행정구제·쟁송',w:24,n:'5~7',codes:['AL-06'],pt:'취소소송(대상·원고적격·소의이익), 행정심판'},
     {name:'손해전보',w:10,n:'2~3',codes:['AL-05'],pt:'국가배상(제2·5·6조), 손실보상'},
-    {name:'기타(정보공개 등)',w:4,n:'1~2',codes:['AL-03-02','AL-03-03'],pt:'조문 중심 소수 출제'},
+    {name:'기타(정보공개 등)',w:4,n:'1~2',codes:['AL-03-22'],pt:'조문 중심 소수 출제'},
   ],
 };
 const areaKey=(sub,i)=>`${sub}:${i}`;
@@ -1538,6 +1661,7 @@ function sessionHome(s){
   if(s.kind==='examsub'){const q=QI[s.ids[0]];return [`#pick/exam/${q?q.subject:''}`,'회차 목록으로 돌아가기']}
   if(s.kind==='omr')return ['#omr','채점 목록으로 돌아가기'];
   if(s.kind==='round')return ['#rounds','회독 현황으로 돌아가기'];
+  if(s.kind==='random')return ['#random','랜덤 풀이로 돌아가기'];
   return ['#solve','문제풀이로 돌아가기'];
 }
 PAGES.result=sid=>{
@@ -1552,7 +1676,7 @@ PAGES.result=sid=>{
   if(isWrong)return hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk} / ${s.ids.length}</b><span>맞힌 문제${nAns<s.ids.length?` · 안 푼 문제 ${s.ids.length-nAns}`:''}</span></div>`,'slim')
     +`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`
     +`<div class="card"><h4>문항별 결과</h4><div class="rnums">${rows.map(r=>`<a class="${r.c==null?'na':r.ok?'ok':'no'}" href="javascript:void 0" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}${r.c==null?'':r.ok?' O':' X'}</a>`).join('')}</div></div>`;
-  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk*2}점</b><span>정답률 ${pct(nOk/s.ids.length)} · ${s.ids.length}문항 중 ${nOk}개 정답${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
+  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk*2}점</b><span>정답률 ${pct(nOk/s.ids.length)} · ${s.ids.length}문항 중 ${nOk}개 정답${s.el?` · 소요 ${fmtT(s.el)}`:''}${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
   const miss=rows.filter(r=>!r.ok);
   h+=`<div class="card"><h4>틀린 문제 ${miss.length?`<span class="badge">${miss.length}</span>`:''}</h4>${miss.length?`<div class="miss">${miss.map(r=>`<a href="javascript:void 0" class="${r.c==null?'na':''}" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}번${r.c==null?' (안 풂)':''}</a>`).join('')}</div><p class="muted" style="margin:10px 0 0;font-size:13px">번호를 누르면 그 문제와 해설로 바로 이동해요</p>`:'<p class="muted" style="margin:0">모두 맞혔어요!</p>'}</div>`;
   const rk=roundKey(s),rl=rk&&S.rounds[rk];
@@ -2004,7 +2128,9 @@ PAGES.home=()=>{
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],['집중공략','#stats/focus','fire','c1'],
     ['회독 현황','#rounds','refresh','c3'],['빈출 단원','#freq','chart','c4'],['요약노트','#summary','star','c1'],
-    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OMR 채점','#omr','check','c4']];
+    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OMR 채점','#omr','check','c4'],
+    ['기출 교재','#books','book','c1'],['교재 정독','#books/read','list','c2'],['기본서','#books/theory','star','c3'],
+    ['랜덤 풀이','#random','refresh','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
   return `<header class="home-top">
       <div class="ht-bar"><span class="ht-brand">${ic('fire')}소방 기출노트</span>${dd!=null?`<span class="ht-dday">D-${dd}</span>`:`<a class="ht-dday set" href="#settings">시험일 설정</a>`}</div>
@@ -2016,7 +2142,6 @@ PAGES.home=()=>{
     <div class="today"><div><b>${st.n}</b><span>오늘 푼 문제</span></div><div><b>${st.n?pct(st.ok/st.n):'-'}</b><span>오늘 정답률</span></div><div><b>${sk}<small>일</small></b><span>연속 학습</span></div></div>`
   +(ADMIN.pending?`<a class="card inst" href="#settings" style="display:block"><div class="inst-row"><div><b>가입 승인 대기 ${ADMIN.pending}명</b><small>설정 → 회원 관리에서 승인해 주세요</small></div><span class="pill">확인</span></div></a>`:'')
   +(live.length?`<div class="sec">이어서 풀기</div><div class="cont">${live.slice(0,8).map(s=>{const a=answered(s);return `<a class="cc" href="#quiz/${s.id}"><small>${esc(TYPE_LABEL[s.kind]||'풀이')}</small><b>${esc(s.short||s.title)}</b><div class="ccbar"><i style="width:${a/s.ids.length*100}%"></i></div><span>${a} / ${s.ids.length}</span></a>`}).join('')}</div>`:'')
-  +(bookExams().length?`<div class="sec">교재 기출</div>${bookExams().map(e=>{const qs=groupQs('exam',e.id),lr=latestRate(qs);return `<a class="card bookc" href="#book/${enc(e.id)}"><div><b>${esc(e.name)}</b><small>단원별 ${qs.length}문항 · 해설 포함${lr.n?` · 정답률 ${pct(lr.rate)}`:''}</small><div class="mbar"><i style="width:${qs.length?lr.n/qs.length*100:0}%"></i></div></div><span class="gbadge ${lr.n?'':'none'}">${lr.n?`${lr.n}/${qs.length}`:'시작'}</span></a>`}).join('')}`:'')
   +`<div class="sec">학습 메뉴</div><div class="sc-grid">${SC.map(([l,h,i,c])=>`<a class="sc" href="${h}"><i class="${c}">${ic(i)}</i><span>${l}</span></a>`).join('')}</div>`
   +installCard(true)
   +(sch.length||S.examDate?`<div class="sec">시험 일정</div><ul class="sched">${S.examDate?`<li><b>내 목표 시험</b><span>${S.examDate}</span></li>`:''}${sch.map(s=>`<li><b>${esc(s.name)}</b><span>${esc(s.date||'미정')}</span></li>`).join('')}</ul>`:'')
