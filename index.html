@@ -1930,7 +1930,8 @@ async function uploadLocal(){
     const man=await (await fetch('private/manifest.json',{cache:'no-store'})).json();
     const files=[new File([await (await fetch('private/exam.json',{cache:'no-store'})).blob()],'exam.json',{type:'application/json'})];
     const tk=await accessToken();
-    const have=new Set((await (await fetch(`${SB_URL}/storage/v1/object/list/fx-images`,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({prefix:'',limit:100000})})).json()).map(o=>o.name));
+    const have=new Set();
+    for(let off=0;;off+=1000){const r=await (await fetch(`${SB_URL}/storage/v1/object/list/fx-images`,{method:'POST',headers:{apikey:SB_KEY,Authorization:'Bearer '+tk,'Content-Type':'application/json'},body:JSON.stringify({prefix:'',limit:1000,offset:off})})).json();r.forEach(o=>have.add(o.name));if(r.length<1000)break}
     const todo=man.images.filter(n=>!have.has(n));
     for(let i=0;i<todo.length;i++){const n=todo[i];if(i%50===0)msg('#upmsg',`새 이미지 읽는 중 ${i}/${todo.length}`);const b=await (await fetch('private/images/'+encodeURIComponent(n))).blob();files.push(new File([b],n,{type:imgType(n)}))}
     await uploadContent({files,value:''});
