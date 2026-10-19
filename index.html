@@ -622,6 +622,16 @@ html,body{background:#e9e3da}
 .bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
+.bs-row{display:flex;flex-wrap:wrap;gap:8px;margin:12px 0 4px}.bs-row .pill{display:inline-flex;align-items:center;gap:6px;text-decoration:none}
+.bs-row .pill svg,.bs-mini svg{width:15px;height:15px}
+.bs-sub{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.bs-mini{display:inline-flex;align-items:center;gap:4px;font-size:12px;font-weight:700;color:var(--ember);text-decoration:none;white-space:nowrap}
+.bsv{margin:0 12px;overflow:auto;border-radius:10px;background:#fff;touch-action:pan-y}
+.bsv .bsimg{display:block;width:100%;cursor:zoom-in}
+.bsv.zoom{touch-action:auto}.bsv.zoom .bsimg{width:180%;max-width:none;cursor:zoom-out}
+.bs-tip{text-align:center;font-size:12px;margin:8px 0 90px}
+.bsbar{align-items:center}.bsjump{display:flex;align-items:center;gap:6px;color:#fff;font-size:14px}
+.bsjump input{width:64px;padding:8px;border-radius:8px;border:0;color:#1a1412;background:#fff;text-align:center;font:inherit;font-weight:700}
 </style>
 </head>
 <body>
@@ -828,7 +838,7 @@ function buildData(){
      exams:mergeBy(base.exams||[],user.exams||[],'id').filter(e=>!(user.hidden||[]).includes(e.id)),
      schedule:(user.schedule&&user.schedule.length?user.schedule:base.schedule)||[]};
   Q=[];QI={};SUBJ={};CODE={};EXAM={};EXN={};
-  D.subjects.forEach(s=>{SUBJ[s.id]=s;(function walk(list,parent,lv){(list||[]).forEach(n=>{CODE[n.code]={code:n.code,name:n.name,subject:s.id,parent,level:lv};walk(n.children,n.code,lv+1)})})(s.toc,null,1)});
+  D.subjects.forEach(s=>{SUBJ[s.id]=s;(function walk(list,parent,lv){(list||[]).forEach(n=>{CODE[n.code]={code:n.code,name:n.name,subject:s.id,parent,level:lv,bp:n.bp};walk(n.children,n.code,lv+1)})})(s.toc,null,1)});
   D.exams.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
   D.exams.forEach(e=>{EXAM[e.id]=e;(e.questions||[]).forEach(q=>{const id=q.id||`${e.id}|${q.subject}|${q.no}`;const o=Object.assign({},q,{id,exam:e.id,codes:q.codes||[],keywords:q.keywords||[]});Q.push(o);QI[id]=o});
     if(!e.book)uniq((e.questions||[]).map(q=>q.subject)).forEach(s=>EXN[s]=(EXN[s]||0)+1)});
@@ -1067,6 +1077,33 @@ PAGES.pick=(type='exam',sub='')=>{
   return h;
 };
 
+/* ================= 기본서 ================= */
+const BS=(sub)=>SUBJ[sub]?.basic;
+const bsKey=(b,pg)=>`${b.prefix}${String(pg).padStart(3,'0')}.webp`;
+function bsLink(sub,pg,label,cls='pill w sm'){const b=BS(sub);if(!b||!pg)return '';pg=Math.min(b.last,Math.max(b.first,+pg));return `<a class="${cls}" href="#basic/${sub}/${pg}">${ic('book')} ${label||`기본서 P.${pg}`}</a>`}
+function codeBp(c){for(let x=c,g=0;x&&g<6;x=parentOf(x),g++)if(CODE[x]?.bp)return CODE[x].bp;return null}
+function bsCodeOf(sub,pg){const s=SUBJ[sub];let r=null;(s?.toc||[]).forEach(c=>(c.children||[]).forEach(x=>{if(x.bp&&pg>=x.bp[0]&&pg<=x.bp[1])r=[c,x]}));return r}
+const BSV={zoom:false};
+PAGES.basic=(sub,pg)=>{
+  const b=BS(sub);if(!b)return hero(topBar('기본서'),'slim')+'<p class="empty">기본서가 없습니다</p>';
+  pg=Math.min(b.last,Math.max(b.first,+pg||b.first));
+  const loc=bsCodeOf(sub,pg);
+  let h=hero(topBar(`${esc(b.name)}`)+`<div class="gcap">P.${pg}${loc?` · ${esc(loc[0].name)} › ${esc(loc[1].name)}`:''}</div>`,'slim');
+  h+=`<div class="bsv ${BSV.zoom?'zoom':''}" id="bsv"><img class="bsimg" data-src="${bsKey(b,pg)}" alt="기본서 ${pg}쪽" onclick="BSV.zoom=!BSV.zoom;document.getElementById('bsv').classList.toggle('zoom',BSV.zoom)"></div>
+    <p class="muted bs-tip">사진을 누르면 확대 · 옆으로 밀면 쪽 넘김</p>
+    <div class="qbar bsbar"><button class="qb" ${pg<=b.first?'disabled':''} onclick="bsGo('${sub}',${pg-1})">이전 쪽</button><form class="bsjump" onsubmit="event.preventDefault();bsGo('${sub}',this.p.value)"><input name="p" type="number" inputmode="numeric" value="${pg}" min="${b.first}" max="${b.last}"><span>/ ${b.last}</span></form><button class="qb main" ${pg>=b.last?'disabled':''} onclick="bsGo('${sub}',${pg+1})">다음 쪽</button></div>`;
+  return h;
+};
+function bsGo(sub,pg){const b=BS(sub);pg=Math.min(b.last,Math.max(b.first,+pg||b.first));location.replace(`#basic/${sub}/${pg}`)}
+AFTER.basic=(sub,pg)=>{
+  const b=BS(sub);if(!b)return;pg=+pg;
+  [pg+1,pg+2,pg-1].forEach(x=>{if(x>=b.first&&x<=b.last)blobImg(bsKey(b,x)).catch(()=>{})});
+  const el=document.getElementById('bsv');if(!el)return;
+  let x0=0,y0=0,on=false;
+  el.addEventListener('pointerdown',e=>{on=true;x0=e.clientX;y0=e.clientY});
+  el.addEventListener('pointerup',e=>{if(!on)return;on=false;const dx=e.clientX-x0,dy=e.clientY-y0;if(BSV.zoom||Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;bsGo(sub,pg+(dx<0?1:-1))});
+};
+
 /* ================= book ================= */
 PAGES.book=eid=>{
   const e=EXAM[eid];let h=hero(topBar(e?e.name:'교재 기출'),'slim');
@@ -1075,7 +1112,7 @@ PAGES.book=eid=>{
   h+=growRow(`#group/bookch/${enc(eid+'~')}`,'전체 단원',`${all.length}문항`,all);
   (s?.toc||[]).forEach(c=>{
     const cq=groupQs('bookch',`${eid}~${c.code}`);if(!cq.length)return;
-    h+=`<div class="subhead">PART ${+c.code.split('-')[1]} ${esc(c.name)}</div>`;
+    h+=`<div class="subhead bs-sub"><span>PART ${+c.code.split('-')[1]} ${esc(c.name)}</span>${c.bp?bsLink(s.id,c.bp[0],`기본서 P.${c.bp[0]}~${c.bp[1]}`,'bs-mini'):''}</div>`;
     (c.children||[]).forEach(x=>{const qs=groupQs('bookch',`${eid}~${x.code}`);if(qs.length)h+=growRow(`#group/bookch/${enc(eid+'~'+x.code)}`,esc(x.name),`${qs.length}문항`,qs,'lv2')});
   });
   return h;
@@ -1095,7 +1132,9 @@ PAGES.group=(type,key)=>{
     const subs=uniq(qs.map(q=>q.subject));
     h+=`<div class="card"><h4>과목별 풀기</h4>${subs.map(s=>{const k=`${key}~${s}`,sq=groupQs('examsub',k),la=latestRate(sq);return `<div class="grow" style="padding:12px 0"><a class="gm" href="#group/examsub/${enc(k)}"><b>${esc(subjName(s))}</b><small>${sq.length}문항${la.n?` · 최근 ${la.ok}/${la.n}`:''}</small></a><a class="pill sm b" href="#omr/${enc(key)}/${s}">OMR 채점</a></div>`}).join('')}</div>`;
   }
+  if(type==='bookch'){const c=key.split('~')[1],r=c&&codeBp(c),sb=c&&codeSubject(c);if(r&&BS(sb))h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[sb].basic.name)} P.${r[0]}~${r[1]} · 문제 풀기 전에 훑어보세요</p>${bsLink(sb,r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
   if(type==='chapter'||type==='section'||type==='subject'||type==='exam'||type==='examsub'){
+    if((type==='chapter'||type==='section')&&!isUnc(key)&&codeBp(key)&&BS(codeSubject(key))){const r=codeBp(key);h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[codeSubject(key)].basic.name)} P.${r[0]}~${r[1]} · 문제 풀기 전에 훑어보세요</p>${bsLink(codeSubject(key),r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
     if((type==='chapter'||type==='section')&&!isUnc(key))h+=`<div class="card"><h4>요약노트</h4><textarea class="note" data-a="${esc(key)}" oninput="setNote(this)" placeholder="이 단원에서 꼭 기억할 내용을 정리하세요">${esc(S.notes[key]||'')}</textarea></div>`;
     const lv=type==='chapter'?2:1;
     const keys=uniq(qs.flatMap(q=>lv===1?qChapters(q):qSections(q)));
@@ -1141,7 +1180,7 @@ PAGES.quiz=sid=>{
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
     h+=`<div class="verdict ${ok?'ok':'no'}">${ic(ok?'check':'x')}${ok?'정답':'오답'}<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')}${ok?'':` · 내 답 ${NUM[chosen-1]}`}</span></div>
-    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.xi?`<img class="qimg xi" data-src="${esc(q.xi)}" alt="해설">`:''}${q.explain||q.xi?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
+    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.xi?`<img class="qimg xi" data-src="${esc(q.xi)}" alt="해설">`:''}${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],`이 단원 기본서 (${esc(codeName(c))})`):''})()}</div>`:''}${q.explain||q.xi?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
     <div class="retry-row"><button class="pill w" onclick="retryQ('${sid}')">${ic('undo')} 다시 풀기</button></div>
     ${unitHTML(chap,sec)}${tagsHTML(q)}`;
     if(q.cx&&q.cx.some(Boolean)){
@@ -1192,6 +1231,8 @@ document.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.c
 document.addEventListener('click',e=>{if(LP.fired&&e.target.closest&&e.target.closest('[data-lp]')){e.preventDefault();e.stopPropagation();LP.fired=false}},true);
 /* ---------- 키보드 (아이패드 블루투스 키보드·PC) ---------- */
 document.addEventListener('keydown',e=>{
+  const bp=location.hash.match(/^#basic\/(\w+)\/(\d+)/);
+  if(bp&&!(e.target.closest&&e.target.closest('input,textarea'))&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();bsGo(bp[1],+bp[2]+(e.key==='ArrowRight'?1:-1));return}
   const sheet=document.getElementById('sheet');
   if(sheet){
     if(e.key==='Escape'){const c=sheet.querySelector('.dbtn.ghost');if(c)c.click();else sheet.click()}
@@ -1834,7 +1875,7 @@ function hydrateImgs(){
   document.querySelectorAll('img[data-src]').forEach(im=>{const p=im.dataset.src;im.removeAttribute('data-src');blobImg(p).then(u=>{im.src=u}).catch(()=>{im.alt='이미지를 불러오지 못했습니다';im.classList.add('imgerr')})});
 }
 async function cacheAll(btn){
-  const ps=uniq(Q.flatMap(q=>(q.img?[].concat(q.img):[]).concat(q.xi?[q.xi]:[])));btn.disabled=true;let done=0,fail=0;
+  const ps=uniq(Q.flatMap(q=>(q.img?[].concat(q.img):[]).concat(q.xi?[q.xi]:[])));/* 기본서는 볼 때 저장 */btn.disabled=true;let done=0,fail=0;
   for(let i=0;i<ps.length;i+=6){
     await Promise.all(ps.slice(i,i+6).map(p=>blobImg(p).catch(()=>{fail++})));
     done=Math.min(ps.length,i+6);btn.textContent=`저장 중 ${done}/${ps.length}`;
