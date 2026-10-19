@@ -622,6 +622,30 @@ html,body{background:#e9e3da}
 .bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
+.bswrap{position:relative}.bswrap canvas.ink{position:absolute;left:0;top:0;touch-action:pan-x pan-y;cursor:crosshair}
+.bsv.zoom .bswrap{width:180%}.bsv.zoom .bsimg{width:100%}
+.inkbar{position:fixed;z-index:60;display:flex;align-items:center;gap:2px;padding:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 28px rgba(26,20,18,.18);user-select:none;-webkit-user-select:none;touch-action:none;transition:box-shadow .2s,transform .2s}
+.inkbar.pos-right{right:10px;top:50%;transform:translateY(-50%);flex-direction:column}
+.inkbar.pos-left{left:10px;top:50%;transform:translateY(-50%);flex-direction:column}
+.inkbar.pos-top{top:calc(env(safe-area-inset-top) + 64px);left:50%;transform:translateX(-50%);flex-direction:row}
+.inkbar.drag{transition:none;box-shadow:0 14px 40px rgba(26,20,18,.35);opacity:.92}
+.ib-grip{width:22px;height:4px;border-radius:2px;background:#d8cfc4;margin:2px}
+.pos-top .ib-grip{width:4px;height:22px}
+.ib{position:relative;width:34px;height:34px;border:0;border-radius:11px;background:transparent;color:#5b5047;display:flex;align-items:center;justify-content:center;padding:0}
+.ib svg{width:20px;height:20px;fill:currentColor}.ib.on{background:#fff1e8;color:var(--ember)}
+.ib i{position:absolute;right:5px;bottom:5px;width:7px;height:7px;border-radius:50%;border:1px solid #fff}
+.ib-c{width:18px;height:18px;border-radius:50%;border:2px solid #fff;background:var(--c);box-shadow:0 0 0 1px #d8cfc4;margin:2px;padding:0}
+.ib-c.on{box-shadow:0 0 0 2px var(--ember)}
+.ib-sep{width:24px;height:1px;background:var(--line);margin:3px 0}.pos-top .ib-sep{width:1px;height:24px;margin:0 3px}
+.rd-tools{margin:0 16px 10px;font-size:14px}.rd-tools label{display:flex;gap:8px;align-items:center}
+.rdc{background:var(--card,#fff);border-radius:16px;margin:0 12px 14px;padding:14px 12px;box-shadow:0 2px 10px rgba(26,20,18,.06);scroll-margin-top:70px}
+.rdc-h{display:flex;align-items:center;gap:8px;margin-bottom:8px;font-size:13px;color:var(--muted)}
+.rdc-h b{min-width:28px;height:28px;border-radius:9px;background:var(--coal,#1a1412);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+.rdc-h em{margin-left:auto;font-style:normal;font-weight:700;font-size:12px;padding:3px 8px;border-radius:8px}.rdc-h em.ok{background:#e9f8ef;color:#13a067}.rdc-h em.no{background:#fde9e6;color:var(--fire)}
+.rdc-x{position:relative}.rdc-cover{display:none}
+.rdc-x.hid{min-height:64px;cursor:pointer}.rdc-x.hid>*:not(.rdc-cover){visibility:hidden}
+.rdc-x.hid .rdc-cover{display:flex;position:absolute;inset:0;max-height:64px;align-items:center;justify-content:center;border-radius:12px;background:#f3eee8;color:#5b5047;font-weight:700}
+.rd-prog{position:fixed;bottom:calc(env(safe-area-inset-bottom) + 84px);left:50%;transform:translateX(-50%);background:var(--coal,#1a1412);color:#fff;border-radius:999px;padding:6px 14px;font-weight:700;font-size:13px;z-index:30;font-variant-numeric:tabular-nums}
 .qtimer{display:inline-flex;align-items:center;gap:5px;border:0;background:var(--coal,#1a1412);color:#fff;border-radius:999px;padding:5px 11px;font:700 13px/1 inherit;font-variant-numeric:tabular-nums;margin:0 0 8px;cursor:pointer}
 .qtimer .ic{width:15px;height:15px}.qtimer em{font-style:normal;font-weight:500;opacity:.8;margin-left:2px}
 .qtimer.pause{background:#8a7f75}.qtimer.warn{background:var(--fire)}.qtimer.done{background:#efe9e1;color:#5b5047;cursor:default}
@@ -704,8 +728,8 @@ function fmt(s){
 const plain=s=>String(s||'').replace(/\[\/?보기\]|\*\*|__/g,' ').replace(/\s+/g,' ').trim();
 
 /* ================= state ================= */
-const DEF={nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{},qmemos:{}};
-const freshState=o=>Object.assign({},DEF,{attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{},qmemos:{}},o||{});
+const DEF={ink:{},nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{},qmemos:{}};
+const freshState=o=>Object.assign({},DEF,{ink:{},attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{},qmemos:{}},o||{});
 let S=freshState(LS.get('fx_state',{}));
 const touch=k=>{S.mt[k]=now()};
 function save(){LS.set('fx_state',S);if(SB_URL&&uidOf()){clearTimeout(SYNC.timer);SYNC.timer=setTimeout(syncNow,2500)}}
@@ -737,7 +761,7 @@ function mergeState(a,b){
   [a.sessions,b.sessions].forEach(o=>Object.values(o).forEach(s=>{if(r.del[s.id]||s.updated<RA)return;const c=r.sessions[s.id];if(!c||s.updated>c.updated)r.sessions[s.id]=s}));
   const mm=new Map();[...a.memos,...b.memos].forEach(m=>{if(r.del[m.id]||m.t<RA)return;const c=mm.get(m.id);if(!c||m.t>c.t)mm.set(m.id,m)});
   r.memos=[...mm.values()].sort((x,y)=>y.t-x.t);
-  [['notes','n:'],['qnotes','q:'],['marks','m:'],['resolved','r:'],['checks','k:']].forEach(([f,p])=>{
+  [['notes','n:'],['qnotes','q:'],['marks','m:'],['resolved','r:'],['checks','k:'],['ink','i:']].forEach(([f,p])=>{
     uniq([...Object.keys(a[f]),...Object.keys(b[f])]).forEach(k=>{
       const ta=a.mt[p+k]||0,tb=b.mt[p+k]||0;if(Math.max(ta,tb)<RA)return;
       const v=ta===tb?(a[f][k]??b[f][k]):(tb>ta?b:a)[f][k];if(v!=null)r[f][k]=v;
@@ -1130,20 +1154,130 @@ PAGES.basic=(sub,pg)=>{
   pg=Math.min(b.last,Math.max(b.first,+pg||b.first));
   const loc=bsCodeOf(sub,pg);
   let h=hero(topBar(`${esc(b.name)}`)+`<div class="gcap">P.${pg}${loc?` · ${esc(loc[0].name)} › ${esc(loc[1].name)}`:''}</div>`,'slim');
-  h+=`<div class="bsv ${BSV.zoom?'zoom':''}" id="bsv"><img class="bsimg" data-src="${bsKey(b,pg)}" alt="기본서 ${pg}쪽" onclick="BSV.zoom=!BSV.zoom;document.getElementById('bsv').classList.toggle('zoom',BSV.zoom)"></div>
-    <p class="muted bs-tip">사진을 누르면 확대 · 옆으로 밀면 쪽 넘김</p>
+  h+=`<div class="bsv ${BSV.zoom?'zoom':''}" id="bsv"><div class="bswrap"><img class="bsimg" data-src="${bsKey(b,pg)}" alt="기본서 ${pg}쪽"><canvas class="ink" id="inkc"></canvas></div></div>
+    <p class="muted bs-tip">애플펜슬로 바로 필기 · 손가락으로 옆으로 밀면 쪽 넘김 · 손가락 두 번 탭하면 확대</p>
+    ${inkBar()}
     <div class="qbar bsbar"><button class="qb" ${pg<=b.first?'disabled':''} onclick="bsGo('${sub}',${pg-1})">이전 쪽</button><form class="bsjump" onsubmit="event.preventDefault();bsGo('${sub}',this.p.value)"><input name="p" type="number" inputmode="numeric" value="${pg}" min="${b.first}" max="${b.last}"><span>/ ${b.last}</span></form><button class="qb main" ${pg>=b.last?'disabled':''} onclick="bsGo('${sub}',${pg+1})">다음 쪽</button></div>`;
   return h;
 };
 function bsGo(sub,pg){const b=BS(sub);pg=Math.min(b.last,Math.max(b.first,+pg||b.first));location.replace(`#basic/${sub}/${pg}`)}
+/* ===== 필기 (애플펜슬) ===== */
+const INKT={pen:{n:'볼펜',w:2.2,a:1},pencil:{n:'연필',w:1.6,a:.8},hl:{n:'형광펜',w:16,a:.32},eraser:{n:'지우개'},hand:{n:'손'}};
+const INKC=['#1f1a17','#e3321d','#1f5fd6','#13a067','#ffd400'];
+const INKSV={
+  get(){try{return Object.assign({tool:'pen',color:'#1f1a17',hl:'#ffd400',pos:'right'},JSON.parse(localStorage.getItem('fx_ink')||'{}'))}catch(e){return {tool:'pen',color:'#1f1a17',hl:'#ffd400',pos:'right'}}},
+  set(o){try{localStorage.setItem('fx_ink',JSON.stringify(Object.assign(INKSV.get(),o)))}catch(e){}}
+};
+const ISV={
+  pen:'<svg viewBox="0 0 24 24"><path d="M3 21l3.8-1 11-11-2.8-2.8-11 11zM15.6 4.8l2.8 2.8 1.4-1.4a1 1 0 0 0 0-1.4l-1.4-1.4a1 1 0 0 0-1.4 0z"/></svg>',
+  pencil:'<svg viewBox="0 0 24 24"><path d="M4 20l1.2-4.6L15.6 5l3.4 3.4L8.6 18.8zM16.8 3.8l1.3-1.3 3.4 3.4-1.3 1.3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M4 20l1.2-4.6 3.4 3.4z"/></svg>',
+  hl:'<svg viewBox="0 0 24 24"><path d="M6 14l7-7 4 4-7 7H6zM14 6l2-2 4 4-2 2z"/><path d="M3 21h9" stroke="currentColor" stroke-width="3"/></svg>',
+  eraser:'<svg viewBox="0 0 24 24"><path d="M16.2 3.6l4.2 4.2a1.5 1.5 0 0 1 0 2.1L11 19.4H6.6L3.6 16.4a1.5 1.5 0 0 1 0-2.1L14.1 3.6a1.5 1.5 0 0 1 2.1 0zM5.7 15.3l2 2h2.4l2.6-2.6-4.4-4.4z"/><path d="M12 20.5h8" stroke="currentColor" stroke-width="1.8"/></svg>',
+  hand:'<svg viewBox="0 0 24 24"><path d="M9 11V4.5a1.5 1.5 0 0 1 3 0V10m0-5.5a1.5 1.5 0 0 1 3 0V10m0-3.5a1.5 1.5 0 0 1 3 0V14a7 7 0 0 1-7 7h-.6a6 6 0 0 1-4.6-2.2L3.5 15a1.6 1.6 0 0 1 2.4-2.1L9 15.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  undo:'<svg viewBox="0 0 24 24"><path d="M9 7H4V2M4.5 7A8 8 0 1 1 4 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  redo:'<svg viewBox="0 0 24 24"><path d="M15 7h5V2M19.5 7A8 8 0 1 0 20 13" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  clear:'<svg viewBox="0 0 24 24"><path d="M5 7h14M10 7V4h4v3M7 7l1 13h8l1-13" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>'
+};
+function inkBar(){
+  const o=INKSV.get(),cur=o.tool==='hl'?o.hl:o.color;
+  return `<div class="inkbar pos-${o.pos}" id="inkbar">
+    <span class="ib-grip" title="꾹 눌러서 위치 이동"></span>
+    ${['pen','pencil','hl','eraser','hand'].map(t=>`<button class="ib ${o.tool===t?'on':''}" data-t="${t}" onclick="inkTool('${t}')" title="${INKT[t].n}" aria-label="${INKT[t].n}">${ISV[t]}${t!=='eraser'&&t!=='hand'?`<i style="background:${t==='hl'?o.hl:o.color}"></i>`:''}</button>`).join('')}
+    <span class="ib-sep"></span>
+    ${INKC.map(c=>`<button class="ib-c ${c===cur?'on':''}" style="--c:${c}" onclick="inkColor('${c}')" aria-label="색"></button>`).join('')}
+    <span class="ib-sep"></span>
+    <button class="ib" onclick="INK.undo()" title="되돌리기" aria-label="되돌리기">${ISV.undo}</button>
+    <button class="ib" onclick="INK.redo()" title="다시 실행" aria-label="다시 실행">${ISV.redo}</button>
+    <button class="ib" onclick="INK.clearAll()" title="이 쪽 필기 모두 지우기" aria-label="모두 지우기">${ISV.clear}</button>
+  </div>`;
+}
+function inkRefreshBar(){const b=document.getElementById('inkbar');if(!b)return;const t=document.createElement('div');t.innerHTML=inkBar();const nb=t.firstElementChild;b.replaceWith(nb);bindInkBar()}
+function inkTool(t){INKSV.set({tool:t});inkRefreshBar()}
+function inkColor(c){const o=INKSV.get();if(o.tool==='hl')INKSV.set({hl:c});else INKSV.set({color:c,tool:o.tool==='eraser'||o.tool==='hand'?'pen':o.tool});inkRefreshBar()}
+const INK={key:'',strokes:[],undoS:[],redoS:[],cv:null,ctx:null,cur:null,
+  setup(key){
+    this.key=key;this.strokes=JSON.parse(JSON.stringify((S.ink||{})[key]||[]));this.undoS=[];this.redoS=[];this.cur=null;
+    this.cv=document.getElementById('inkc');if(!this.cv)return;this.ctx=this.cv.getContext('2d');
+    const img=this.cv.previousElementSibling;
+    const fit=()=>this.fit();if(img.complete&&img.naturalWidth)fit();img.addEventListener('load',fit);
+    new ResizeObserver(fit).observe(img);
+    this.bind();
+  },
+  fit(){const cv=this.cv,img=cv&&cv.previousElementSibling;if(!img||!img.clientWidth)return;const d=window.devicePixelRatio||1;cv.width=Math.round(img.clientWidth*d);cv.height=Math.round(img.clientHeight*d);cv.style.width=img.clientWidth+'px';cv.style.height=img.clientHeight+'px';this.redraw()},
+  pt(e){const r=this.cv.getBoundingClientRect();return [Math.round((e.clientX-r.left)/r.width*10000),Math.round((e.clientY-r.top)/r.height*10000),Math.round((e.pressure||.5)*100)]},
+  drawStroke(s,from=0){
+    const [t,c,pts]=s,ctx=this.ctx,W=this.cv.width,H=this.cv.height,k=W/1000,T=INKT[t];if(!T)return;
+    ctx.save();ctx.lineCap='round';ctx.lineJoin='round';ctx.strokeStyle=c;ctx.globalAlpha=T.a;
+    if(t==='hl')ctx.globalCompositeOperation='multiply';
+    if(t==='hl'){ctx.lineWidth=T.w*k;ctx.beginPath();for(let i=0;i<pts.length;i+=3){const x=pts[i]/1e4*W,y=pts[i+1]/1e4*H;i?ctx.lineTo(x,y):ctx.moveTo(x,y)}ctx.stroke()}
+    else{
+      if(pts.length===3){ctx.fillStyle=c;ctx.beginPath();ctx.arc(pts[0]/1e4*W,pts[1]/1e4*H,T.w*k*.6,0,7);ctx.fill()}
+      for(let i=Math.max(3,from);i<pts.length;i+=3){
+        const p=pts[i+2]/100,w=t==='pencil'?T.w*k*(.45+p*.9):T.w*k*(.7+p*.6);
+        ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(pts[i-3]/1e4*W,pts[i-2]/1e4*H);ctx.lineTo(pts[i]/1e4*W,pts[i+1]/1e4*H);ctx.stroke();
+      }
+    }
+    ctx.restore();
+  },
+  redraw(){if(!this.ctx)return;this.ctx.clearRect(0,0,this.cv.width,this.cv.height);this.strokes.forEach(s=>this.drawStroke(s));if(this.cur)this.drawStroke(this.cur)},
+  persist(){S.ink=S.ink||{};if(this.strokes.length)S.ink[this.key]=this.strokes;else S.ink[this.key]=[];touch('i:'+this.key);save()},
+  hit(p){const r=180;const out=[];this.strokes.forEach((s,i)=>{const q=s[2];for(let j=0;j<q.length;j+=3){if(Math.abs(q[j]-p[0])<r&&Math.abs(q[j+1]-p[1])<r*this.cv.width/this.cv.height){out.push(i);break}}});return out},
+  erase(p){const ids=this.hit(p);if(!ids.length)return;const rm=ids.sort((a,b)=>b-a).map(i=>({i,s:this.strokes.splice(i,1)[0]}));this.curErase.push(...rm);this.redraw()},
+  undo(){const op=this.undoS.pop();if(!op)return;if(op.t==='add')this.strokes.splice(this.strokes.indexOf(op.s),1);else if(op.t==='del')op.items.slice().reverse().forEach(x=>this.strokes.splice(x.i,0,x.s));else if(op.t==='clr')this.strokes=op.prev;this.redoS.push(op);this.redraw();this.persist()},
+  redo(){const op=this.redoS.pop();if(!op)return;if(op.t==='add')this.strokes.push(op.s);else if(op.t==='del')op.items.forEach(x=>{const k=this.strokes.indexOf(x.s);if(k>=0)this.strokes.splice(k,1)});else if(op.t==='clr')this.strokes=[];this.undoS.push(op);this.redraw();this.persist()},
+  clearAll(){if(!this.strokes.length)return;appConfirm('이 쪽의 필기를 모두 지울까요?').then(ok=>{if(!ok)return;this.undoS.push({t:'clr',prev:this.strokes});this.redoS=[];this.strokes=[];this.redraw();this.persist()})},
+  bind(){
+    const cv=this.cv;
+    cv.addEventListener('touchstart',e=>{const t=e.touches[0];if(t&&t.touchType==='stylus')e.preventDefault()},{passive:false});
+    cv.addEventListener('touchmove',e=>{const t=e.touches[0];if(t&&t.touchType==='stylus')e.preventDefault()},{passive:false});
+    cv.addEventListener('pointerdown',e=>{
+      const o=INKSV.get();
+      if(e.pointerType==='touch'||o.tool==='hand'||(e.pointerType==='mouse'&&e.button!==0))return;
+      e.preventDefault();e.stopPropagation();cv.setPointerCapture(e.pointerId);
+      if(o.tool==='eraser'){this.curErase=[];this.erasing=true;this.erase(this.pt(e));return}
+      this.cur=[o.tool,o.tool==='hl'?o.hl:o.color,this.pt(e)];this.drawStroke(this.cur);
+    });
+    cv.addEventListener('pointermove',e=>{
+      if(this.erasing){(e.getCoalescedEvents?e.getCoalescedEvents():[e]).forEach(x=>this.erase(this.pt(x)));return}
+      if(!this.cur)return;e.preventDefault();
+      const n=this.cur[2].length;(e.getCoalescedEvents?e.getCoalescedEvents():[e]).forEach(x=>{const p=this.pt(x),q=this.cur[2];if(Math.abs(p[0]-q[q.length-3])+Math.abs(p[1]-q[q.length-2])>=4)q.push(...p)});
+      if(this.cur[0]==='hl')this.redraw();else this.drawStroke(this.cur,n);
+    });
+    const end=()=>{
+      if(this.erasing){this.erasing=false;if(this.curErase.length){this.undoS.push({t:'del',items:this.curErase});this.redoS=[];this.persist()}return}
+      if(!this.cur)return;const s=this.cur;this.cur=null;this.strokes.push(s);this.undoS.push({t:'add',s});this.redoS=[];this.redraw();this.persist();
+    };
+    cv.addEventListener('pointerup',end);cv.addEventListener('pointercancel',end);
+    let lastTap=0;
+    cv.addEventListener('pointerup',e=>{if(e.pointerType!=='touch'&&INKSV.get().tool!=='hand')return;const t=Date.now();if(t-lastTap<320){BSV.zoom=!BSV.zoom;document.getElementById('bsv').classList.toggle('zoom',BSV.zoom);lastTap=0}else lastTap=t});
+  }
+};
+function bindInkBar(){
+  const bar=document.getElementById('inkbar');if(!bar)return;
+  let timer=null,drag=false,sx=0,sy=0,pid=null;
+  bar.addEventListener('pointerdown',e=>{sx=e.clientX;sy=e.clientY;pid=e.pointerId;clearTimeout(timer);
+    timer=setTimeout(()=>{drag=true;bar.classList.add('drag');try{bar.setPointerCapture(pid)}catch(x){}if(navigator.vibrate)navigator.vibrate(15)},450)});
+  bar.addEventListener('pointermove',e=>{
+    if(!drag){if(Math.abs(e.clientX-sx)+Math.abs(e.clientY-sy)>8)clearTimeout(timer);return}
+    e.preventDefault();bar.style.left=(e.clientX-bar.offsetWidth/2)+'px';bar.style.top=(e.clientY-bar.offsetHeight/2)+'px';bar.style.right='auto';bar.style.transform='none';
+  });
+  const up=e=>{clearTimeout(timer);if(!drag)return;drag=false;bar.classList.remove('drag');
+    const W=innerWidth,H=innerHeight,pos=e.clientY<H*.28?'top':(e.clientX<W/2?'left':'right');
+    INKSV.set({pos});bar.removeAttribute('style');bar.className=`inkbar pos-${pos}`;
+    const stop=ev=>{ev.stopPropagation();ev.preventDefault()};bar.addEventListener('click',stop,{capture:true,once:true});setTimeout(()=>bar.removeEventListener('click',stop,{capture:true}),50)};
+  bar.addEventListener('pointerup',up);bar.addEventListener('pointercancel',up);
+  bar.addEventListener('contextmenu',e=>e.preventDefault());
+}
 AFTER.basic=(sub,pg)=>{
   const b=BS(sub);if(!b)return;pg=+pg;
   [pg+1,pg+2,pg-1].forEach(x=>{if(x>=b.first&&x<=b.last)blobImg(bsKey(b,x)).catch(()=>{})});
+  INK.setup(`${sub}-${pg}`);bindInkBar();
   const el=document.getElementById('bsv');if(!el)return;
   let x0=0,y0=0,on=false;
-  el.addEventListener('pointerdown',e=>{on=true;x0=e.clientX;y0=e.clientY});
+  el.addEventListener('pointerdown',e=>{if(e.pointerType!=='touch'&&!(e.pointerType==='mouse'&&INKSV.get().tool==='hand'))return;on=true;x0=e.clientX;y0=e.clientY});
   el.addEventListener('pointerup',e=>{if(!on)return;on=false;const dx=e.clientX-x0,dy=e.clientY-y0;if(BSV.zoom||Math.abs(dx)<60||Math.abs(dx)<Math.abs(dy)*1.5)return;bsGo(sub,pg+(dx<0?1:-1))});
 };
+
 
 /* ================= book ================= */
 const SUB_ORDER=['FS','FL','AL'];
@@ -1197,30 +1331,41 @@ PAGES.sbook=(sub,tab='solve')=>{
   return h;
 };
 AFTER.sbook=growAll;
+const RDV={get hide(){try{return localStorage.getItem('fx_rdhide')==='1'}catch(e){return false}},set hide(v){try{localStorage.setItem('fx_rdhide',v?'1':'0')}catch(e){}}};
 PAGES.read=(key,idx)=>{
   const qs=groupQs('bookch',key);const [eid,code]=key.split('~');
   const title=code?codeName(code):(EXAM[eid]?.name||'정독');
-  let h=hero(topBar(esc(title)),'slim');
+  let h=hero(topBar(esc(title))+`<div class="gcap">정독 · ${qs.length}문항 · 위아래로 쭉 읽어요</div>`,'slim');
   if(!qs.length)return h+'<p class="empty">문제가 없습니다</p>';
-  idx=Math.min(qs.length-1,Math.max(0,+idx||0));RP.set(key,idx);
-  const q=qs[idx],ans=answers(q);
-  h+=`<div class="qwrap rd" id="rdv"><div class="qhead"><div class="qsrc">${esc(q.lbl||'PART '+q.part)} · ${q.no}번 · ${idx+1}/${qs.length}${q.bp?` · 기본서 P.${q.bp}`:''}</div></div>
-    ${(q.img?[].concat(q.img):[]).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join('')}
-    <div class="verdict ok rd-ans">${ic('check')}정답<span>${ans.map(a=>NUM[a-1]).join(' ')}</span></div>
-    ${q.xi?`<img class="qimg xi" data-src="${esc(q.xi)}" alt="해설">`:''}
-    ${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],'이 단원 기본서'):''})()}</div>`:''}
-  </div><div style="height:90px"></div>
-  <div class="qbar"><button class="qb" ${idx?'':'disabled'} onclick="rdGo(${idx-1})">이전</button><span class="qcount">${idx+1} / ${qs.length}</span><button class="qb main" ${idx<qs.length-1?'':'disabled'} onclick="rdGo(${idx+1})">다음</button></div>`;
+  const hide=RDV.hide;
+  h+=`<div class="rd-tools"><label><input type="checkbox" ${hide?'checked':''} onchange="RDV.hide=this.checked;rerender()">정답·해설 가리기 (눌러서 보기)</label></div>`;
+  h+=qs.map((q,i)=>{const ans=answers(q),st=qstat(q.id);
+    return `<section class="rdc" id="rd${i}" data-i="${i}">
+      <div class="rdc-h"><b>${i+1}</b><span>${esc(q.lbl||'PART '+q.part)} · ${q.no}번${q.src?` · ${esc(q.src)}`:''}</span>${st.n?`<em class="${st.wrong?'no':'ok'}">${st.wrong?`오답 ${st.wrong}`:'맞힘'}</em>`:''}</div>
+      ${(q.img?[].concat(q.img):[]).map(x=>`<img class="qimg" data-lsrc="${esc(x)}" alt="">`).join('')}
+      <div class="rdc-x ${hide?'hid':''}" onclick="this.classList.remove('hid')">
+        <div class="verdict ok rd-ans">${ic('check')}정답<span>${ans.map(a=>NUM[a-1]).join(' ')}</span></div>
+        ${q.xi?`<img class="qimg xi" data-lsrc="${esc(q.xi)}" alt="해설">`:''}
+        ${BS(q.subject)&&q.bp?`<div class="bs-row">${bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`)}</div>`:''}
+        <span class="rdc-cover">정답·해설 보기</span>
+      </div></section>`}).join('');
+  h+=`<div style="height:100px"></div><div class="rd-prog" id="rdprog">1 / ${qs.length}</div>`;
   return h;
 };
-function rdGo(i){const m=location.hash.match(/^#read\/([^/]+)\//);if(m)location.replace(`#read/${m[1]}/${i}`)}
+function rdGo(i){const el=document.getElementById('rd'+i);if(el)el.scrollIntoView({behavior:'smooth',block:'start'})}
 AFTER.read=(key,idx)=>{
-  const qs=groupQs('bookch',key);idx=+idx||0;
-  [idx+1,idx+2].forEach(i=>{const q=qs[i];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).catch(()=>{}))});
-  const el=document.getElementById('rdv');if(!el)return;let x0=0,y0=0,on=false;
-  el.addEventListener('pointerdown',e=>{on=true;x0=e.clientX;y0=e.clientY});
-  el.addEventListener('pointerup',e=>{if(!on)return;on=false;const dx=e.clientX-x0,dy=e.clientY-y0;if(Math.abs(dx)<70||Math.abs(dx)<Math.abs(dy)*1.5)return;const n=idx+(dx<0?1:-1);if(n>=0&&n<qs.length)rdGo(n)});
+  const qs=groupQs('bookch',key);idx=Math.min(qs.length-1,Math.max(0,+idx||0));
+  const load=img=>{const p=img.dataset.lsrc;img.removeAttribute('data-lsrc');blobImg(p).then(u=>{img.src=u}).catch(()=>{img.alt='이미지를 불러오지 못했습니다'})};
+  const io=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){e.target.querySelectorAll('img[data-lsrc]').forEach(load);io.unobserve(e.target)}}),{rootMargin:'1200px 0px'});
+  document.querySelectorAll('.rdc').forEach(s=>io.observe(s));
+  const prog=document.getElementById('rdprog');let cur=idx;
+  const vo=new IntersectionObserver(es=>es.forEach(e=>{if(e.isIntersecting){cur=+e.target.dataset.i;RP.set(key,cur);if(prog)prog.textContent=`${cur+1} / ${qs.length}`;history.replaceState(null,'',`#read/${enc(key)}/${cur}`)}}),{rootMargin:'-30% 0px -60% 0px'});
+  document.querySelectorAll('.rdc').forEach(s=>vo.observe(s));
+  READCUR=()=>cur;
+  if(idx){const el=document.getElementById('rd'+idx);if(el){for(let k=Math.max(0,idx-1);k<=idx+1;k++)document.querySelectorAll(`#rd${k} img[data-lsrc]`).forEach(load);setTimeout(()=>el.scrollIntoView({block:'start'}),60)}}
 };
+let READCUR=()=>0;
+
 
 
 /* ================= group ================= */
@@ -1353,7 +1498,7 @@ document.addEventListener('click',e=>{if(LP.fired&&e.target.closest&&e.target.cl
 /* ---------- 키보드 (아이패드 블루투스 키보드·PC) ---------- */
 document.addEventListener('keydown',e=>{
   const rd=location.hash.match(/^#read\/([^/]+)\/(\d+)/);
-  if(rd&&!(e.target.closest&&e.target.closest('input,textarea'))&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();const n=+rd[2]+(e.key==='ArrowRight'?1:-1),L=groupQs('bookch',decodeURIComponent(rd[1])).length;if(n>=0&&n<L)rdGo(n);return}
+  if(rd&&!(e.target.closest&&e.target.closest('input,textarea'))&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();rdGo(READCUR()+(e.key==='ArrowRight'||e.key==='ArrowDown'?1:-1));return}
   const bp=location.hash.match(/^#basic\/(\w+)\/(\d+)/);
   if(bp&&!(e.target.closest&&e.target.closest('input,textarea'))&&(e.key==='ArrowLeft'||e.key==='ArrowRight')){e.preventDefault();bsGo(bp[1],+bp[2]+(e.key==='ArrowRight'?1:-1));return}
   const sheet=document.getElementById('sheet');
