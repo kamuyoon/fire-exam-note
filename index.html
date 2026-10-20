@@ -622,6 +622,9 @@ html,body{background:#e9e3da}
 .bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
+.qimg.bk{width:100%;max-width:100%;height:auto}
+.qtimer{white-space:nowrap;flex:none;height:30px;align-self:center}
+.qhead{flex-wrap:wrap;row-gap:6px}.qhead .qsrc{order:3;flex-basis:100%}
 .bswrap{position:relative}.bswrap canvas.ink{position:absolute;left:0;top:0;touch-action:pan-x pan-y;cursor:crosshair}
 .bsv.zoom .bswrap{width:180%}.bsv.zoom .bsimg{width:100%}
 .inkbar{position:fixed;z-index:60;display:flex;align-items:center;gap:2px;padding:6px;background:rgba(255,255,255,.96);border:1px solid var(--line);border-radius:18px;box-shadow:0 8px 28px rgba(26,20,18,.18);user-select:none;-webkit-user-select:none;touch-action:none;transition:box-shadow .2s,transform .2s}
@@ -1342,10 +1345,10 @@ PAGES.read=(key,idx)=>{
   h+=qs.map((q,i)=>{const ans=answers(q),st=qstat(q.id);
     return `<section class="rdc" id="rd${i}" data-i="${i}">
       <div class="rdc-h"><b>${i+1}</b><span>${esc(q.lbl||'PART '+q.part)} · ${q.no}번${q.src?` · ${esc(q.src)}`:''}</span>${st.n?`<em class="${st.wrong?'no':'ok'}">${st.wrong?`오답 ${st.wrong}`:'맞힘'}</em>`:''}</div>
-      ${(q.img?[].concat(q.img):[]).map(x=>`<img class="qimg" data-lsrc="${esc(x)}" alt="">`).join('')}
+      ${(q.img?[].concat(q.img):[]).map(x=>`<img class="qimg bk" data-lsrc="${esc(x)}" alt="">`).join('')}
       <div class="rdc-x ${hide?'hid':''}" onclick="this.classList.remove('hid')">
         <div class="verdict ok rd-ans">${ic('check')}정답<span>${ans.map(a=>NUM[a-1]).join(' ')}</span></div>
-        ${q.xi?`<img class="qimg xi" data-lsrc="${esc(q.xi)}" alt="해설">`:''}
+        ${q.xi?`<img class="qimg bk xi" data-lsrc="${esc(q.xi)}" alt="해설">`:''}
         ${BS(q.subject)&&q.bp?`<div class="bs-row">${bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`)}</div>`:''}
         <span class="rdc-cover">정답·해설 보기</span>
       </div></section>`}).join('');
@@ -1417,9 +1420,9 @@ PAGES.quiz=sid=>{
   const choices=q.choiceImg||!q.choices
     ?`<div class="cnum">${Array.from({length:n},(_,i)=>`<button class="${cls(i+1)}" onclick="choose('${sid}',${i+1})">${NUM[i]}</button>`).join('')}</div><div class="cnum-ck">${Array.from({length:n},(_,i)=>ckBtn(sid,i+1,sc,gc)).join('')}</div>`
     :q.choices.map((c,i)=>`<div class="crow-wrap"><button class="crow${cls(i+1)}" onclick="choose('${sid}',${i+1})"><span class="cmark">${reveal&&ans.includes(i+1)?ic('ok'):reveal&&+chosen===i+1?ic('no'):''}</span><span class="cn">${NUM[i]}</span><span class="ct">${fmt(c)}</span></button>${ckBtn(sid,i+1,sc,gc)}</div>`).join('');
-  const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
+  const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg${q.qi?' bk':''}" data-src="${esc(x)}" alt="">`).join(''):'';
   const chap=qChapters(q)[0],sec=qSections(q)[0];
-  h+=`<div class="qwrap"><div class="qhead">${timerChip(s)}<div class="qsrc">${EXAM[q.exam]?.book?`${esc(examName(q.exam))} · ${esc(q.lbl||'PART '+q.part)} · ${q.no}번`:`${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번`}${q.bp?` · 기본서 P.${q.bp}`:''}</div><div class="qtools"><button class="qt ck ${gc.q?'on':''}" onclick="addQCheck('${sid}',1)" data-lp="addQCheck('${sid}',-1)" aria-label="이 문제 체크 (꾹 누르면 빼기)" title="이 문제 체크 +1 (Ctrl+Enter) · 꾹 누르면 -1">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
+  h+=`<div class="qwrap"><div class="qhead">${timerChip(s)}<div class="qsrc">${EXAM[q.exam]?.book?`${esc(EXAM[q.exam]?.short||examName(q.exam))} · ${esc(q.lbl||'PART '+q.part)} · ${q.no}번${q.src?` · ${esc(q.src)}`:''}`:`${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번`}${q.bp?` · 기본서 P.${q.bp}`:''}</div><div class="qtools"><button class="qt ck ${gc.q?'on':''}" onclick="addQCheck('${sid}',1)" data-lp="addQCheck('${sid}',-1)" aria-label="이 문제 체크 (꾹 누르면 빼기)" title="이 문제 체크 +1 (Ctrl+Enter) · 꾹 누르면 -1">${ic('ok')}${gc.q?`<i class="cnt">${gc.q}</i>`:''}</button><button class="qt ${QV.strike?'on':''}" onclick="QV.strike=!QV.strike;rerender()" aria-label="보기 지우개" title="보기 지우개">${ic('eraser')}</button><button class="qt" onclick="clearStrike('${sid}')" aria-label="지운 보기 되돌리기" title="지운 보기 되돌리기">${ic('undo')}</button><button class="qt ${QV.hint?'on':''}" onclick="QV.hint=!QV.hint;rerender()" aria-label="힌트" title="힌트">${ic('bulb')}</button></div></div>
     ${q.qi?'':`<h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>`}${imgs}
     ${QV.strike?'<p class="qinfo" style="margin:10px 0 0;color:var(--ember)">지우개 모드: 지울 보기를 누르세요</p>':''}
     ${QV.hint&&!reveal?`<div class="hintbox">${unitHTML(chap,sec)||'<span class="muted">분류 정보 없음</span>'}${tagsHTML(q)}</div>`:''}
@@ -1429,7 +1432,7 @@ PAGES.quiz=sid=>{
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
     h+=`<div class="verdict ${ok?'ok':'no'}">${ic(ok?'check':'x')}${ok?'정답':'오답'}<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')}${ok?'':` · 내 답 ${NUM[chosen-1]}`}</span></div>
-    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.xi?`<img class="qimg xi" data-src="${esc(q.xi)}" alt="해설">`:''}${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],`이 단원 기본서 (${esc(codeName(c))})`):''})()}</div>`:''}${q.explain||q.xi?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
+    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.xi?`<img class="qimg bk xi" data-src="${esc(q.xi)}" alt="해설">`:''}${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],`이 단원 기본서 (${esc(codeName(c))})`):''})()}</div>`:''}${q.explain||q.xi?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
     <div class="retry-row"><button class="pill w" onclick="retryQ('${sid}')">${ic('undo')} 다시 풀기</button></div>
     ${unitHTML(chap,sec)}${tagsHTML(q)}`;
     if(q.cx&&q.cx.some(Boolean)){
@@ -1474,7 +1477,7 @@ const fmtT=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.
 function timerChip(s){
   if(s.done)return s.el?`<span class="qtimer done">${ic('timer')}${fmtT(s.el)}</span>`:'';
   const left=s.lim?s.lim-(s.el||0):null;
-  return `<button class="qtimer ${s.pause?'pause':''} ${left!=null&&left<300?'warn':''}" id="qtimer" onclick="togglePause('${s.id}')" title="누르면 일시정지">${ic('timer')}<span>${left!=null?fmtT(left):fmtT(s.el)}</span>${s.pause?'<em>일시정지</em>':''}</button>`;
+  return `<button class="qtimer ${s.pause?'pause':''} ${left!=null&&left<300?'warn':''}" id="qtimer" onclick="togglePause('${s.id}')" title="누르면 일시정지">${ic('timer')}<span>${left!=null?fmtT(left):fmtT(s.el)}</span>${s.pause?'<em>정지</em>':''}</button>`;
 }
 function togglePause(sid){const s=S.sessions[sid];if(!s)return;s.pause=!s.pause;save();rerender()}
 setInterval(()=>{
@@ -2133,7 +2136,7 @@ async function blobImg(p){
   try{c=await caches.open('fx-img');res=await c.match(ck)}catch(e){}
   if(!res){
     const tk=await accessToken();
-    const r=await fetch(`${SB_URL}/storage/v1/object/authenticated/fx-images/${encodeURIComponent(key)}`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+tk}});
+    const r=await fetch(`${SB_URL}/storage/v1/object/authenticated/fx-images/${encodeURIComponent(key.split('?')[0])}`,{headers:{apikey:SB_KEY,Authorization:'Bearer '+tk}});
     if(!r.ok)throw new Error('img '+r.status);
     if(c)try{await c.put(ck,r.clone())}catch(e){}
     res=r;
@@ -2318,7 +2321,7 @@ PAGES.unlock=(app='')=>{
   if(LOCK.passed)return `<div class="lk">${head}<div class="card lk-card lk-pass"><div class="lk-ok">${ic('check')}</div><h3>통과! 잘했어요</h3><p class="muted">${LOCK.tried>1?`${LOCK.tried}번째 문제에서 맞혔어요.`:'한 번에 맞혔어요.'} 15분 동안은 다시 묻지 않아요.</p><button class="btn full" onclick="lockReturn()">${esc(name)}(으)로 돌아가기</button></div></div>`;
   if(!LOCK.qid||!QI[LOCK.qid]){lockPickQ();LOCK.tried++}
   const q=QI[LOCK.qid],ans=answers(q),c=LOCK.chosen,rev=c!=null;
-  const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg" data-src="${esc(x)}" alt="">`).join(''):'';
+  const imgs=q.img?[].concat(q.img).map(x=>`<img class="qimg${q.qi?' bk':''}" data-src="${esc(x)}" alt="">`).join(''):'';
   const rows=q.choices.map((t,i)=>{const n=i+1;let cl='';if(rev){if(ans.includes(n))cl=' correct';else if(c===n)cl=' wrong'}return `<button class="crow${cl}" onclick="lockChoose(${n})"><span class="cn">${NUM[i]}</span><span class="ct">${fmt(t)}</span></button>`}).join('');
   let h=`<div class="lk">${head}<div class="card lk-card"><div class="qsrc">${esc(examName(q.exam))} · ${esc(subjName(q.subject))} ${q.no}번 · ${LOCK.tried}번째 문제</div><h2 class="qtitle"><b>${q.no}</b>${fmt(q.q)}</h2>${imgs}<div class="choices">${rows}</div>`;
   if(rev&&!ans.includes(c))h+=`<div class="verdict no">${ic('x')}오답<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')} · 오답노트에 담았어요</span></div>${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}<button class="btn full" style="margin-top:14px" onclick="LOCK.qid='';rerender()">다음 문제 풀기</button>`;
