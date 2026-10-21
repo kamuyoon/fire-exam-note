@@ -1451,7 +1451,7 @@ function unitHTML(chap,sec){
 }
 const tagsHTML=q=>q.keywords.length?`<div class="tags">${q.keywords.map(k=>`<a href="#group/keyword/${enc(k)}">#${esc(k)}</a>`).join('')}</div>`:'';
 AFTER.quiz=sid=>{growAll();bindSwipe(sid);preloadNear(sid);
-  if(QV.toExp){QV.toExp=false;setTimeout(()=>{const v=document.querySelector('.qwrap .verdict');if(v)smoothTo(v.getBoundingClientRect().top+scrollY-110)},160)}const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)hl.scrollIntoView({block:'nearest'});const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
+  if(QV.toExp){QV.toExp=false;setTimeout(()=>{const v=document.querySelector('.qwrap .verdict');if(v)smoothTo(v.getBoundingClientRect().top+scrollY-110)},160)}const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)setTimeout(()=>{const r=hl.getBoundingClientRect(),bot=innerHeight-(document.querySelector('.qbar')?.offsetHeight||90)-16,top=90;if(r.bottom>bot)smoothTo(scrollY+r.bottom-bot);else if(r.top<top)smoothTo(scrollY+r.top-top)},0);const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
 function qbar(s){
   const last=s.idx>=s.ids.length-1;
   const main=last?(s.done?`<button class="qb main" onclick="location.hash='result/${s.id}'">결과 보기</button>`:`<button class="qb main" onclick="finishPrompt('${s.id}')">${s.mode==='exam'?'제출하기':'풀이 완료'}</button>`):`<button class="qb main" onclick="qmove('${s.id}',1)">다음</button>`;
