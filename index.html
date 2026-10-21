@@ -1615,6 +1615,7 @@ document.addEventListener('keydown',e=>{
   const np=/^Numpad([1-5])$/.exec(e.code||'');
   if(np&&!/^[0-9]$/.test(e.key)){e.preventDefault();toggleStrike(sid,+np[1]);return}
   if(mod&&e.key==='Enter'){e.preventDefault();addQCheck(sid,e.shiftKey?-1:1);return}
+  if(mod&&(e.key==='ArrowDown'||e.key==='ArrowUp')){e.preventDefault();const dn=e.key==='ArrowDown';if(e.repeat)window.scrollBy(0,dn?44:-44);else smoothTo(scrollY+(dn?260:-260));return}
   if(mod)return;
   if(e.key==='ArrowRight'){e.preventDefault();qmove(sid,1)}
   else if(e.key==='ArrowLeft'){e.preventDefault();if(s.idx>0)qmove(sid,-1)}
@@ -2156,7 +2157,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v34 · 10월 21일';
+const APP_VER='v35 · 10월 22일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
