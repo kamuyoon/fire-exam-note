@@ -622,6 +622,7 @@ html,body{background:#e9e3da}
 .bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
+.sc.kb{outline:3px solid var(--ember);outline-offset:2px;transform:translateY(-2px)}
 .qimg.bk{width:100%;max-width:100%;height:auto}
 .qtimer{white-space:nowrap;flex:none;height:30px;align-self:center}
 .qhead{flex-wrap:wrap;row-gap:6px}.qhead .qsrc{order:3;flex-basis:100%}
@@ -1479,6 +1480,21 @@ function smoothTo(y){
   const step=t=>{ran=true;const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);window.scrollTo(0,y0+(y-y0)*e);if(k<1)requestAnimationFrame(step)};
   requestAnimationFrame(step);setTimeout(()=>{if(!ran)window.scrollTo(0,y)},d+150);
 }
+/* 홈 키보드 이동: 방향키로 학습 메뉴 선택, 엔터로 열기, 위·아래 길게 누르면 화면 스크롤 */
+let HOMEKB=-1;
+function homeKey(e){
+  const tiles=[...document.querySelectorAll('.sc-grid .sc')];if(!tiles.length)return;
+  e.preventDefault();
+  if(e.repeat&&(e.key==='ArrowUp'||e.key==='ArrowDown')){window.scrollBy(0,e.key==='ArrowDown'?42:-42);return}
+  if(e.key==='Enter'){if(HOMEKB>=0&&tiles[HOMEKB])tiles[HOMEKB].click();return}
+  const cols=Math.max(1,Math.round(tiles[tiles.length-1].parentNode.clientWidth/tiles[0].offsetWidth))||3;
+  if(HOMEKB<0||!tiles[HOMEKB])HOMEKB=0;
+  else if(!tiles[HOMEKB].classList.contains('kb')){}
+  else{const d={ArrowLeft:-1,ArrowRight:1,ArrowUp:-cols,ArrowDown:cols}[e.key];const n=HOMEKB+d;if(n>=0&&n<tiles.length)HOMEKB=n}
+  tiles.forEach((t,i)=>t.classList.toggle('kb',i===HOMEKB));
+  const r=tiles[HOMEKB].getBoundingClientRect(),bot=innerHeight-(document.querySelector('#tabbar')?.offsetHeight||80)-16;
+  if(r.bottom>bot)smoothTo(scrollY+r.bottom-bot);else if(r.top<80)smoothTo(scrollY+r.top-80);
+}
 function preloadNear(sid){const s=S.sessions[sid];if(!s)return;[s.idx+1,s.idx-1,s.idx+2,s.idx].forEach(i=>{const q=QI[s.ids[i]];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).catch(()=>{}))})}
 /* 타이머 */
 const fmtT=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
@@ -1508,6 +1524,7 @@ document.addEventListener('pointerdown',e=>{const b=e.target.closest&&e.target.c
 document.addEventListener('click',e=>{if(LP.fired&&e.target.closest&&e.target.closest('[data-lp]')){e.preventDefault();e.stopPropagation();LP.fired=false}},true);
 /* ---------- 키보드 (아이패드 블루투스 키보드·PC) ---------- */
 document.addEventListener('keydown',e=>{
+  if((location.hash===''||location.hash==='#home'||location.hash==='#')&&!document.getElementById('sheet')&&!(e.target.closest&&e.target.closest('input,textarea,select'))&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){homeKey(e);return}
   const rd=location.hash.match(/^#read\/([^/]+)\/(\d+)/);
   if(rd&&!(e.target.closest&&e.target.closest('input,textarea'))&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();rdGo(READCUR()+(e.key==='ArrowRight'||e.key==='ArrowDown'?1:-1));return}
   const bp=location.hash.match(/^#basic\/(\w+)\/(\d+)/);
