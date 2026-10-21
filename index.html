@@ -974,7 +974,7 @@ function render(keep){
   const g=gateState();
   document.body.classList.toggle('gated',!!g);
   if(g){v.innerHTML=gatePage(g);document.body.classList.remove('quiz-mode');PAGEDIR=0;SAMEPAGE=false;return}
-  v.innerHTML=PAGES[p](...parts.slice(1));
+  v.innerHTML=String(PAGES[p](...parts.slice(1))).replace(/data-src="([^"]+)"/g,(m,k)=>{const u=IMGMEM[k.replace(/&amp;/g,'&')];return u?`src="${u}"`:m});
   if(AFTER[p])AFTER[p](...parts.slice(1));
   hydrateImgs();
   if(PAGEDIR&&!keep){
@@ -1450,7 +1450,7 @@ function unitHTML(chap,sec){
   return `<div class="unit"><a class="un" href="#group/chapter/${enc(chap)}">${esc(codeName(chap))}</a>${sec?`<a class="pill sm sky" href="#group/section/${enc(sec)}">${esc(codeName(sec))} ${ic('open')}</a>`:''}</div>`;
 }
 const tagsHTML=q=>q.keywords.length?`<div class="tags">${q.keywords.map(k=>`<a href="#group/keyword/${enc(k)}">#${esc(k)}</a>`).join('')}</div>`:'';
-AFTER.quiz=sid=>{growAll();bindSwipe(sid);const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)hl.scrollIntoView({block:'nearest'});const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
+AFTER.quiz=sid=>{growAll();bindSwipe(sid);preloadNear(sid);const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)hl.scrollIntoView({block:'nearest'});const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
 function qbar(s){
   const last=s.idx>=s.ids.length-1;
   const main=last?(s.done?`<button class="qb main" onclick="location.hash='result/${s.id}'">결과 보기</button>`:`<button class="qb main" onclick="finishPrompt('${s.id}')">${s.mode==='exam'?'제출하기':'풀이 완료'}</button>`):`<button class="qb main" onclick="qmove('${s.id}',1)">다음</button>`;
@@ -1472,6 +1472,7 @@ function addCCheck(sid,n,d){
   chkClean(id);touch('k:'+id);s.updated=now();save();rerender();
 }
 const toggleQCheck=sid=>addQCheck(sid,1),toggleCCheck=(sid,n)=>addCCheck(sid,n,1);
+function preloadNear(sid){const s=S.sessions[sid];if(!s)return;[s.idx+1,s.idx-1,s.idx+2,s.idx].forEach(i=>{const q=QI[s.ids[i]];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).catch(()=>{}))})}
 /* 타이머 */
 const fmtT=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
 function timerChip(s){
