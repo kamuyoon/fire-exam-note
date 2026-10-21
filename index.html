@@ -2093,7 +2093,16 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-if('serviceWorker' in navigator&&location.protocol!=='file:')navigator.serviceWorker.register('sw.js').catch(()=>{});
+if('serviceWorker' in navigator&&location.protocol!=='file:'){
+  // 새 버전 자동 적용: 앱을 다시 열거나 화면으로 돌아올 때 확인 → 새 버전이 활성화되면 조용히 다시 불러옴
+  const hadCtrl=!!navigator.serviceWorker.controller;let reloading=false;
+  navigator.serviceWorker.addEventListener('controllerchange',()=>{if(!hadCtrl||reloading)return;reloading=true;try{LS.set('fx_state',S)}catch(e){}location.reload()});
+  navigator.serviceWorker.register('sw.js',{updateViaCache:'none'}).then(reg=>{
+    const chk=()=>reg.update().catch(()=>{});
+    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')chk()});
+    setInterval(chk,10*60*1000);chk();
+  }).catch(()=>{});
+}
 
 document.addEventListener('dblclick',e=>e.preventDefault(),{passive:false});
 document.addEventListener('gesturestart',e=>e.preventDefault());
