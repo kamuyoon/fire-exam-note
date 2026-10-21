@@ -2046,13 +2046,13 @@ PAGES.settings=()=>{
   const user=LS.get('fx_data',{});
   return hero(topBar('설정',{back:false}),'slim')
   +accountCard()+adminCards()+`<div class="card"><h4>내 정보</h4><label class="field">닉네임<input value="${esc(S.nickname)}" placeholder="수험생" onchange="S.nickname=this.value.trim();touch('nick');save()"></label><label class="field">목표 시험일<input type="date" value="${esc(S.examDate)}" onchange="S.examDate=this.value;touch('examDate');save()"></label></div>
-  ${installCard(false)}${lockCard()}<div class="card"><h4>오프라인 저장</h4><p class="muted" style="margin:0 0 12px;font-size:14px">문제 이미지를 폰에 미리 받아두면 인터넷 없이도 풀 수 있어요 (약 3MB)</p><button class="pill b" onclick="cacheAll(this)">전체 문제 오프라인 저장</button></div>${ME.m&&ME.m.is_admin?`<div class="card"><h4>기출 데이터</h4><p class="muted" style="margin:0 0 12px;font-size:14px">과목 ${D.subjects.length} · 회차 ${D.exams.length} · 문제 ${Q.length}</p>
+  <div class="card verc"><h4>앱 버전</h4><p style="margin:0;font-size:15px"><b>${APP_VER}</b> <span class="muted" id="verlatest"></span></p></div>${installCard(false)}${lockCard()}<div class="card"><h4>오프라인 저장</h4><p class="muted" style="margin:0 0 12px;font-size:14px">문제 이미지를 폰에 미리 받아두면 인터넷 없이도 풀 수 있어요 (약 3MB)</p><button class="pill b" onclick="cacheAll(this)">전체 문제 오프라인 저장</button></div>${ME.m&&ME.m.is_admin?`<div class="card"><h4>기출 데이터</h4><p class="muted" style="margin:0 0 12px;font-size:14px">과목 ${D.subjects.length} · 회차 ${D.exams.length} · 문제 ${Q.length}</p>
     <div class="row-btns"><span class="pill filebtn">기출 데이터 불러오기<input type="file" accept=".json,.js,application/json" onchange="importData(this)"></span>${(user.exams||[]).length||(user.subjects||[]).length?`<button class="pill gr" onclick="clearUserData()">불러온 데이터 삭제</button>`:''}<a class="pill w" href="#toc">목차·코드표</a></div><div class="msg" id="dmsg"></div></div>`:''}
   <div class="card"><h4>학습 기록</h4><p class="muted" style="margin:0 0 12px;font-size:14px">누적 풀이 ${nAtt}회 · 오답 ${Q.filter(q=>isWrong(q.id)).length}문항 · 메모 ${S.memos.length}</p>
     <div class="row-btns"><button class="pill b" onclick="exportBackup()">백업 내보내기</button><span class="pill b filebtn">백업 불러오기<input type="file" accept=".json" onchange="importBackup(this)"></span><button class="pill r" onclick="resetAll()">기록 초기화</button></div><div class="msg" id="bmsg"></div></div>
 `;
 };
-AFTER.settings=()=>{syncStatus();loadMembers()};
+AFTER.settings=()=>{syncStatus();loadMembers();verCheck()};
 function msg(id,t,err){const e=$(id);if(e){e.textContent=t;e.style.color=err?'var(--red)':''}}
 function readFile(input,cb){const f=input.files[0];if(!f)return;const r=new FileReader();r.onload=()=>{cb(r.result);input.value=''};r.readAsText(f,'utf-8')}
 function importData(input){readFile(input,txt=>{
@@ -2093,6 +2093,22 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
+const APP_VER='v31 · 10월 21일';
+/* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
+async function verCheck(){
+  try{
+    const r=await fetch('version.json?t='+Date.now(),{cache:'no-store'});if(!r.ok)return;const j=await r.json();
+    const el=document.getElementById('verlatest');if(el)el.textContent=j.v===APP_VER?'· 최신 버전':`· 최신 ${j.v} 받는 중`;
+    if(j.v!==APP_VER&&sessionStorage.getItem('fx_vfix')!==j.v){
+      sessionStorage.setItem('fx_vfix',j.v);try{LS.set('fx_state',S)}catch(e){}
+      try{const ks=await caches.keys();await Promise.all(ks.filter(k=>k!=='fx-img').map(k=>caches.delete(k)))}catch(e){}
+      try{const regs=await navigator.serviceWorker.getRegistrations();await Promise.all(regs.map(g=>g.update().catch(()=>{})))}catch(e){}
+      location.reload();
+    }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')verCheck()});
+setTimeout(verCheck,1500);
 if('serviceWorker' in navigator&&location.protocol!=='file:'){
   // 새 버전 자동 적용: 앱을 다시 열거나 화면으로 돌아올 때 확인 → 새 버전이 활성화되면 조용히 다시 불러옴
   const hadCtrl=!!navigator.serviceWorker.controller;let reloading=false;
