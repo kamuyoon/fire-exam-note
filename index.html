@@ -940,6 +940,7 @@ function hasCode(q,k){if(isUnc(k))return q.subject===k.slice(4)&&!q.codes.some(c
 const att=id=>S.attempts[id]||[];
 function qstat(id){const a=att(id),ok=a.filter(x=>x.ok).length;return{n:a.length,ok,wrong:a.length-ok,last:a[a.length-1]}}
 function agg(qs){let n=0,ok=0,solved=0;qs.forEach(q=>{const s=qstat(q.id);n+=s.n;ok+=s.ok;if(s.n)solved++});return{total:qs.length,n,ok,wrong:n-ok,solved,rate:n?ok/n:0}}
+function rsc(r){return r.n?Math.round(r.ok*100/r.n):r.score}
 function latestRate(qs){let n=0,ok=0;qs.forEach(q=>{const l=qstat(q.id).last;if(l){n++;if(l.ok)ok++}});return{n,ok,rate:n?ok/n:0}}
 const isWrong=id=>!S.resolved[id]&&att(id).some(x=>!x.ok);
 function record(id,c,src){const q=QI[id];if(!q)return false;const ok=answers(q).includes(+c);(S.attempts[id]=S.attempts[id]||[]).push({t:now(),c:+c,ok,src});if(!ok&&S.resolved[id]){delete S.resolved[id];touch('r:'+id)}return ok}
@@ -1666,7 +1667,7 @@ function finish(sid,force){
     const rk=roundKey(s);
     if(rk&&s.ids.length===groupQs('examsub',rk).length){
       const ok=s.ids.filter(id=>QI[id]&&s.ans[id]!=null&&answers(QI[id]).includes(+s.ans[id])).length;
-      (S.rounds[rk]=S.rounds[rk]||[]).push({t:now(),ok,n:s.ids.length,score:ok*2});
+      (S.rounds[rk]=S.rounds[rk]||[]).push({t:now(),ok,n:s.ids.length,score:Math.round(ok*100/s.ids.length)});
     }
   }
   s.done=true;s.temp=false;s.updated=now();save();location.replace('#result/'+sid);
@@ -1875,8 +1876,8 @@ function roundsPage(sub){
   return h+realExams().filter(e=>groupQs('examsub',`${e.id}~${sub}`).length).map(e=>{
     const key=`${e.id}~${sub}`,rs=S.rounds[key]||[],qs=groupQs('examsub',key),lv=live.find(s=>s.kind==='examsub'&&s.key===key);
     const tag=/가답안/.test(e.name)?'<small>가답안</small>':'';
-    return `<div class="rcard"><div class="rc-l"><div class="rc-t"><b>${esc(e.id)}</b><span>${rs.length?`${rs.length}회독 최근 ${rs[rs.length-1].score}점`:'아직 회독 기록 없음'}</span>${tag}</div>
-      <div class="stars">${rs.map((r,i)=>starSVG(i+1,r.score,r.n?r.ok/r.n:r.score/100)).join('')}${lv?`<span class="rc-live">${rs.length+1}회차 진행중 ${answered(lv)}/${lv.ids.length}</span>`:''}</div></div>
+    return `<div class="rcard"><div class="rc-l"><div class="rc-t"><b>${esc(e.id)}</b><span>${rs.length?`${rs.length}회독 최근 ${rsc(rs[rs.length-1])}점`:'아직 회독 기록 없음'}</span>${tag}</div>
+      <div class="stars">${rs.map((r,i)=>starSVG(i+1,rsc(r),r.n?r.ok/r.n:r.score/100)).join('')}${lv?`<span class="rc-live">${rs.length+1}회차 진행중 ${answered(lv)}/${lv.ids.length}</span>`:''}</div></div>
       <div class="rc-r"><div class="rc-btn"><button class="r" data-k="${esc(key)}" onclick="resetRound(this.dataset.k)">초기화</button><button class="g" data-k="${esc(key)}" onclick="playRound(this.dataset.k)">${lv?'이어풀기':'풀기'}</button></div>
       <div class="rc-info">${qs.length}문항${e.cutline!=null?`<br>합격선 ${e.cutline}점`:''}<a href="#group/examsub/${enc(key)}">문항 보기</a><a href="#omr/${enc(e.id)}/${sub}">OMR 채점</a></div></div></div>`;
   }).join('');
@@ -1909,18 +1910,18 @@ PAGES.result=sid=>{
   const rows=s.ids.map((id,i)=>{const q=QI[id],c=s.ans[id];return{id,i,q,c,ok:!!q&&c!=null&&answers(q).includes(+c)}});
   const nOk=rows.filter(r=>r.ok).length,nAns=rows.filter(r=>r.c!=null).length,wrong=rows.filter(r=>r.c!=null&&!r.ok);
   const qs=rows.map(r=>r.q).filter(Boolean),oneSub=uniq(qs.map(q=>q.subject)).length===1&&uniq(qs.map(q=>q.exam)).length===1;
-  const cut=oneSub?EXAM[qs[0].exam]?.cutline:null,score=nOk*2;
+  const cut=oneSub?EXAM[qs[0].exam]?.cutline:null,score=s.ids.length?Math.round(nOk*100/s.ids.length):0;
   const ch={};rows.filter(r=>r.q&&r.c!=null).forEach(r=>qChapters(r.q).forEach(k=>{ch[k]=ch[k]||{n:0,w:0};ch[k].n++;if(!r.ok)ch[k].w++}));
   const weak=Object.entries(ch).filter(([,v])=>v.w).sort((a,b)=>b[1].w-a[1].w||b[1].w/b[1].n-a[1].w/a[1].n);
   const [homeHref,homeLabel]=sessionHome(s),isWrong=s.kind==='wrong';
   if(isWrong)return hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk} / ${s.ids.length}</b><span>맞힌 문제${nAns<s.ids.length?` · 안 푼 문제 ${s.ids.length-nAns}`:''}</span></div>`,'slim')
     +`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`
     +`<div class="card"><h4>문항별 결과</h4><div class="rnums">${rows.map(r=>`<a class="${r.c==null?'na':r.ok?'ok':'no'}" href="javascript:void 0" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}${r.c==null?'':r.ok?' O':' X'}</a>`).join('')}</div></div>`;
-  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${nOk*2}점</b><span>정답률 ${pct(nOk/s.ids.length)} · ${s.ids.length}문항 중 ${nOk}개 정답${s.el?` · 소요 ${fmtT(s.el)}`:''}${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
+  let h=hero(topBar(s.title,{backHref:homeHref})+`<div class="score"><b>${score}점</b><span>정답률 ${pct(nOk/s.ids.length)} · ${s.ids.length}문항 중 ${nOk}개 정답${s.el?` · 소요 ${fmtT(s.el)}`:''}${nAns<s.ids.length?` · 미응답 ${s.ids.length-nAns}`:''}${cut!=null?` · 합격선 ${cut}점 ${score>=cut?'통과':'미달'}`:''}</span></div>`,'slim');
   const miss=rows.filter(r=>!r.ok);
   h+=`<div class="card"><h4>틀린 문제 ${miss.length?`<span class="badge">${miss.length}</span>`:''}</h4>${miss.length?`<div class="miss">${miss.map(r=>`<a href="javascript:void 0" class="${r.c==null?'na':''}" onclick="qjump('${sid}',${r.i});location.hash='quiz/${sid}'">${r.q?r.q.no:r.i+1}번${r.c==null?' (안 풂)':''}</a>`).join('')}</div><p class="muted" style="margin:10px 0 0;font-size:13px">번호를 누르면 그 문제와 해설로 바로 이동해요</p>`:'<p class="muted" style="margin:0">모두 맞혔어요!</p>'}</div>`;
   const rk=roundKey(s),rl=rk&&S.rounds[rk];
-  if(rl&&rl.length)h+=`<div class="card" style="display:flex;align-items:center;gap:12px"><div class="stars" style="margin:0">${starSVG(rl.length,rl[rl.length-1].score,rl[rl.length-1].n?rl[rl.length-1].ok/rl[rl.length-1].n:1)}</div><div><b>${rl.length}회독 완료</b><br><a class="link" style="font-size:14px" href="#pick/exam/${rk.split('~')[1]}">회차별 기록 보기</a></div></div>`;
+  if(rl&&rl.length)h+=`<div class="card" style="display:flex;align-items:center;gap:12px"><div class="stars" style="margin:0">${starSVG(rl.length,rsc(rl[rl.length-1]),rl[rl.length-1].n?rl[rl.length-1].ok/rl[rl.length-1].n:1)}</div><div><b>${rl.length}회독 완료</b><br><a class="link" style="font-size:14px" href="#pick/exam/${rk.split('~')[1]}">회차별 기록 보기</a></div></div>`;
   h+=`<div class="card"><div class="sbtns" style="grid-template-columns:1fr 1fr"><button class="btn red" onclick="retryWrong('${sid}')" ${wrong.length?'':'disabled'}>틀린 문제 다시 풀기<small>${wrong.length}문항</small></button><button class="btn" onclick="qjump('${sid}',0);location.hash='quiz/${sid}'">해설 보기<small>처음부터</small></button></div><button class="btn blue full" style="margin-top:8px" onclick="location.hash='${homeHref}'">${homeLabel}</button></div>`;
   if(oneSub&&AREAS[qs[0].subject]){const fr=focusRows(qs[0].subject,s.ans);h+=focusTop(fr,'이번 풀이 기준 집중할 영역')}
   if(weak.length)h+=`<div class="card"><h4>이번 풀이에서 틀린 단원</h4>${weak.map(([k,v])=>`<a class="wk" href="#group/chapter/${enc(k)}"><span>${esc(groupName('code',k))}</span><span><b>${v.w}</b> / ${v.n}문항</span></a>`).join('')}</div>`;
@@ -1999,10 +2000,13 @@ PAGES.stats=(tab='focus',sub='')=>{
       +(days.length?days.map(d=>{const v=by[d],r=v.ok/(v.ok+v.no);return `<div class="drow"><div class="dl">${d.slice(5).replace('-','/')}</div><div class="db"><div class="hb g" style="width:${v.ok/mx*90}%">${v.ok}</div><div class="hb r" style="width:${v.no/mx*90}%">${v.no}</div><div class="hb b" style="width:${r*90}%">${pct(r)}</div></div></div>`}).join(''):'<p class="empty">아직 풀이 기록이 없습니다</p>');
   }
   if(tab==='exam'){
-    const rows=realExams().map(e=>({e,r:latestRate(groupQs('exam',e.id))})).filter(x=>x.r.n);
-    h+=intro('회차별 성적','푼 회차의 성적을 최신순으로 확인하세요.<br>회차별 합격선과 비교해<br>합격 가능성을 가늠할 수 있습니다.','*각 문항의 가장 최근 풀이 기준입니다.')
-      +`<div class="legend"><span><i class="c-g"></i>내 정답률</span><span><i class="c-b"></i>합격선</span></div>`
-      +(rows.length?rows.map(({e,r})=>`<div class="drow"><div class="dl">${esc(e.short||e.name)}</div><div class="db"><div class="hb g" style="width:${r.rate*90}%">${pct(r.rate)}</div>${e.cutline!=null?`<div class="hb b" style="width:${e.cutline*.9}%">${e.cutline}%</div>`:''}</div></div>`).join(''):'<p class="empty">아직 푼 회차가 없습니다</p>');
+    const rows=[];realExams().forEach(e=>D.subjects.forEach(sb=>{const key=`${e.id}~${sb.id}`,qs=groupQs('examsub',key);if(!qs.length)return;
+      const rs=S.rounds[key]||[],lr=latestRate(qs);if(!rs.length&&lr.n<qs.length)return;rows.push({e,sb,key,rs,lr,n:qs.length})}));
+    h+=intro('회차별 성적','몇 회차 어느 과목에서 몇 점을 받았는지<br>회독 순서대로 확인하세요.','*점수 = 100점 만점 환산(25문항 4점, 20문항 5점). 회차·과목을 끝까지 푼 기록만 표시됩니다.')
+      +(rows.length?rows.map(({e,sb,key,rs,lr,n})=>{const last=rs[rs.length-1],sc=last?rsc(last):Math.round(lr.ok*100/n),ok=last?last.ok:lr.ok,tot=last?last.n:n;
+        return `<div class="wrow"><div class="wname">${esc(e.short||e.id)}<small>${esc(subjName(sb.id))}</small></div><div><div class="whead"><b style="font-size:20px">${sc}점</b> · ${tot}문제 중 ${ok}개 정답${rs.length?` · ${rs.length}회독`:' · 회독 기록 없음'}<a href="#pick/exam/${sb.id}">회차 보기</a></div>
+        <div class="bl"><span>점수</span><div class="track"><div class="fill ${sc>=60?'green':'red'}" style="width:${sc}%">${sc}점</div></div></div>
+        ${rs.length>1?`<div class="bl"><span>회독별</span><div style="font-size:14px">${rs.map((r,i)=>`${i+1}회 <b>${rsc(r)}</b>`).join(' · ')}</div></div>`:''}</div></div>`}).join(''):'<p class="empty">아직 푼 회차가 없습니다</p>');
   }
   if(tab==='subject'){
     h+=intro('과목별 성적','과목별 정답률과 진도율을 비교해<br>어느 과목에 시간을 더 써야 할지 판단하세요.','*진도율 = 한 번 이상 푼 문항 / 전체 문항')
@@ -2157,7 +2161,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v35 · 10월 22일';
+const APP_VER='v36 · 10월 22일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
