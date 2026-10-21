@@ -391,7 +391,7 @@ button:active:not(:disabled),.pill:active,.btn:active,.tab:active,.pl:active,.kw
 .cnum button:active{transform:scale(.9)}
 #tabbar a:active{transform:scale(.9)}
 .grow:active,.qrow:active,.wi:active,.memo-i:active,.fz:active{background:#f1eee7}
-.qwrap{touch-action:pan-y;will-change:transform}
+.qwrap{touch-action:pan-y}
 /* 안 푼 문제 시트 */
 .sheet-bg{position:fixed;inset:0;background:rgba(0,0,0,0);z-index:50;display:flex;align-items:flex-end;justify-content:center;transition:background .2s}
 .sheet-bg.on{background:rgba(0,0,0,.35)}
@@ -623,6 +623,7 @@ html,body{background:#e9e3da}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
 .sc.kb{outline:3px solid var(--ember);outline-offset:2px;transform:translateY(-2px)}
+#view .kb:not(.sc){outline:3px solid var(--ember);outline-offset:-3px;border-radius:12px}
 .qimg.bk{width:100%;max-width:100%;height:auto}
 .qtimer{white-space:nowrap;flex:none;height:30px;align-self:center}
 .qhead{flex-wrap:wrap;row-gap:6px}.qhead .qsrc{order:3;flex-basis:100%}
@@ -976,7 +977,7 @@ function render(keep){
   document.body.classList.toggle('gated',!!g);
   if(g){v.innerHTML=gatePage(g);document.body.classList.remove('quiz-mode');PAGEDIR=0;SAMEPAGE=false;return}
   const keepImgs={};if(keep)v.querySelectorAll('img[data-k]').forEach(im=>{if(im.complete&&im.naturalWidth)keepImgs[im.dataset.k]=im});
-  v.innerHTML=String(PAGES[p](...parts.slice(1))).replace(/data-src="([^"]+)"/g,(m,k)=>{const u=IMGMEM[k.replace(/&amp;/g,'&')];return u?`src="${u}" data-k="${k}"`:`${m} data-k="${k}"`});
+  v.innerHTML=String(PAGES[p](...parts.slice(1))).replace(/data-src="([^"]+)"/g,(m,k)=>{const u=IMGMEM[k.replace(/&amp;/g,'&')];const kk=k.replace(/&amp;/g,'&'),dm=IMGDIM[kk],wh=dm?` width="${dm[0]}" height="${dm[1]}"`:'';return u?`src="${u}" data-k="${k}"${wh}`:`${m} data-k="${k}"${wh}`});
   if(keep)v.querySelectorAll('img[data-k]').forEach(im=>{const o=keepImgs[im.dataset.k];if(o){o.className=im.className;im.replaceWith(o);delete keepImgs[im.dataset.k]}});
   if(AFTER[p])AFTER[p](...parts.slice(1));
   hydrateImgs();
@@ -1482,6 +1483,26 @@ function smoothTo(y){
   const step=t=>{ran=true;const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);window.scrollTo(0,y0+(y-y0)*e);if(k<1)requestAnimationFrame(step)};
   requestAnimationFrame(step);setTimeout(()=>{if(!ran)window.scrollTo(0,y)},d+150);
 }
+/* 일반 화면 키보드 이동: ↑↓(←→) 항목 이동, Enter 열기, Esc 뒤로, ↑↓ 길게 = 스크롤 */
+let PAGEKB={h:'',i:-1};
+const KBSEL='#view .tabs a,#view a.grow,#view a.card,#view a.cc,#view a.wk,#view a.kw,#view .sbtns button,#view .row-btns a,#view .row-btns button,#view button.btn,#view .pill';
+function pageKey(e){
+  if(e.key==='Escape'){e.preventDefault();history.back();return true}
+  const items=[...document.querySelectorAll(KBSEL)].filter(el=>el.offsetParent&&!el.disabled&&!el.closest('.qbar'));
+  if(!items.length)return false;
+  if(e.repeat&&(e.key==='ArrowUp'||e.key==='ArrowDown')){e.preventDefault();window.scrollBy(0,e.key==='ArrowDown'?42:-42);return true}
+  if(PAGEKB.h!==location.hash){PAGEKB={h:location.hash,i:-1}}
+  let i=PAGEKB.i;const cur=items.findIndex(el=>el.classList.contains('kb'));
+  if(e.key==='Enter'){if(cur>=0){e.preventDefault();items[cur].click();return true}return false}
+  e.preventDefault();
+  if(cur<0)i=Math.max(0,Math.min(i,items.length-1));
+  else i=Math.max(0,Math.min(items.length-1,cur+((e.key==='ArrowDown'||e.key==='ArrowRight')?1:-1)));
+  if(cur<0&&i<0)i=0;
+  items.forEach((el,k)=>el.classList.toggle('kb',k===i));PAGEKB.i=i;
+  const r=items[i].getBoundingClientRect(),bot=innerHeight-(document.querySelector('#tabbar')?.offsetHeight||80)-16;
+  if(r.bottom>bot)smoothTo(scrollY+r.bottom-bot);else if(r.top<80)smoothTo(scrollY+r.top-80);
+  return true;
+}
 /* 홈 키보드 이동: 방향키로 학습 메뉴 선택, 엔터로 열기, 위·아래 길게 누르면 화면 스크롤 */
 let HOMEKB=-1;
 function homeKey(e){
@@ -1497,7 +1518,7 @@ function homeKey(e){
   const r=tiles[HOMEKB].getBoundingClientRect(),bot=innerHeight-(document.querySelector('#tabbar')?.offsetHeight||80)-16;
   if(r.bottom>bot)smoothTo(scrollY+r.bottom-bot);else if(r.top<80)smoothTo(scrollY+r.top-80);
 }
-function preloadNear(sid){const s=S.sessions[sid];if(!s)return;[s.idx+1,s.idx-1,s.idx+2,s.idx].forEach(i=>{const q=QI[s.ids[i]];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).catch(()=>{}))})}
+function preloadNear(sid){const s=S.sessions[sid];if(!s)return;[s.idx+1,s.idx-1,s.idx+2,s.idx].forEach(i=>{const q=QI[s.ids[i]];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).then(u=>{if(IMGDIM[p])return;const im=new Image();im.onload=()=>{IMGDIM[p]=[im.naturalWidth,im.naturalHeight]};im.src=u}).catch(()=>{}))})}
 /* 타이머 */
 const fmtT=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
 function timerChip(s){
@@ -1527,6 +1548,7 @@ document.addEventListener('click',e=>{if(LP.fired&&e.target.closest&&e.target.cl
 /* ---------- 키보드 (아이패드 블루투스 키보드·PC) ---------- */
 document.addEventListener('keydown',e=>{
   if((location.hash===''||location.hash==='#home'||location.hash==='#')&&!document.getElementById('sheet')&&!(e.target.closest&&e.target.closest('input,textarea,select'))&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter'].includes(e.key)&&!e.ctrlKey&&!e.metaKey&&!e.altKey){homeKey(e);return}
+  if(!['quiz','read','basic','home','unlock'].includes(pageOf(location.hash))&&!document.getElementById('sheet')&&!(e.target.closest&&e.target.closest('input,textarea,select'))&&!e.ctrlKey&&!e.metaKey&&!e.altKey&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown','Enter','Escape'].includes(e.key)){if(pageKey(e))return}
   const rd=location.hash.match(/^#read\/([^/]+)\/(\d+)/);
   if(rd&&!(e.target.closest&&e.target.closest('input,textarea'))&&['ArrowLeft','ArrowRight','ArrowUp','ArrowDown'].includes(e.key)){e.preventDefault();rdGo(READCUR()+(e.key==='ArrowRight'||e.key==='ArrowDown'?1:-1));return}
   const bp=location.hash.match(/^#basic\/(\w+)\/(\d+)/);
@@ -2093,7 +2115,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v31 · 10월 21일';
+const APP_VER='v32 · 10월 21일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
@@ -2181,7 +2203,8 @@ async function bootAuth(){
   render(true);
 }
 /* 비공개 이미지: 로그인 토큰으로 받아서 기기에 캐시 */
-const IMGMEM={};
+const IMGMEM={},IMGDIM={};
+document.addEventListener('load',e=>{const t=e.target;if(t&&t.tagName==='IMG'&&t.dataset&&t.dataset.k&&t.naturalWidth)IMGDIM[t.dataset.k]=[t.naturalWidth,t.naturalHeight]},true);
 async function blobImg(p){
   if(IMGMEM[p])return IMGMEM[p];
   const key=String(p).replace(/^images\//,''),ck=`${location.origin}/fx-img/${encodeURIComponent(key)}`;
