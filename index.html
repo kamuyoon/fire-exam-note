@@ -622,6 +622,19 @@ html,body{background:#e9e3da}
 .bookc>div{flex:1;min-width:0}.bookc b{display:block;font-size:16px}.bookc small{color:var(--muted);font-size:13px}
 .bookc .mbar{margin-top:8px}
 .qimg.xi{margin-top:14px}
+.exb{margin-top:14px;font-size:15.5px;line-height:1.65;color:#2b2420}
+.exb p{margin:0 0 4px}.exb .pk{color:#e3327a;font-weight:700}
+.ex-t{font-weight:800;font-size:16px;margin:0 0 10px;padding-left:10px;border-left:4px solid var(--ember)}
+.ex-c{margin:0 0 10px;padding:10px 12px;border-radius:12px}
+.ex-c.g{background:#ecf9f1;color:#0f7a4f}.ex-c.r{background:#fff1ee;color:#c3361f}
+.ex-ch{display:flex;align-items:center;gap:8px;margin-bottom:2px}.ex-n{font-size:18px;font-weight:800}
+.ex-tag{font-size:11px;font-weight:800;padding:2px 7px;border-radius:7px;color:#fff}.ex-tag.g{background:#13a067}.ex-tag.r{background:var(--fire)}
+.ex-c .pk{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.ex-body{margin:6px 0 10px}
+.ex-tbw{overflow-x:auto;margin:6px 0 8px}.ex-tb{border-collapse:collapse;font-size:14px;min-width:100%}.ex-tb th,.ex-tb td{border:1px solid #e5ddd3;padding:6px 8px;text-align:center}.ex-tb th{background:#f6f1ea;font-weight:700}
+.ex-ref{background:#f6f3ee;border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14.5px}.ex-ref>b,.ex-more>b{display:block;font-size:13px;margin-bottom:4px;color:#7a6d62}
+.ex-more{background:#fff8e6;border:1px solid #f4dfa6;border-radius:12px;padding:10px 12px;margin:8px 0;font-size:14.5px}.ex-more>b{color:#a26b00}
+.ex-orig{margin-top:10px}.ex-orig summary{cursor:pointer;color:var(--muted);font-size:13px;padding:6px 0}
 .sc.kb{outline:3px solid var(--ember);outline-offset:2px;transform:translateY(-2px)}
 #view .kb:not(.sc){outline:3px solid var(--ember);outline-offset:-3px;border-radius:12px}
 .qimg.bk{width:100%;max-width:100%;height:auto}
@@ -723,6 +736,26 @@ const uid=()=>Math.random().toString(36).slice(2,10);
 const uniq=a=>[...new Set(a)];
 const shuffle=a=>{for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
 const LS={get(k,d){try{const v=localStorage.getItem(k);return v?JSON.parse(v):d}catch(e){return d}},set(k,v){try{localStorage.setItem(k,JSON.stringify(v));return true}catch(e){return false}}};
+/* 텍스트 해설: 제목 · 선지별 해설(정답 초록/나머지 빨강) · 본문(표 지원) · 참고 · 더 알아보기 */
+function exMD(t){
+  if(!t)return '';
+  const out=[];let tb=[];
+  const inl=x=>esc(x).replace(/\*\*(.+?)\*\*/g,'<b class="pk">$1</b>');
+  const flush=()=>{if(tb.length){out.push(`<div class="ex-tbw"><table class="ex-tb">${tb.map((r,i)=>`<tr>${r.map(c=>i?`<td>${inl(c)}</td>`:`<th>${inl(c)}</th>`).join('')}</tr>`).join('')}</table></div>`);tb=[]}};
+  String(t).split('\n').forEach(l=>{const m=l.trim();if(m.startsWith('|')){tb.push(m.replace(/^\||\|$/g,'').split('|').map(c=>c.trim()));return}flush();if(m)out.push(`<p>${inl(m)}</p>`)});
+  flush();return out.join('');
+}
+function exHTML(q,chosen,lazy){
+  const e=q.ex,ans=answers(q),n=nChoices(q),cx=e.cx||{};
+  let h=`<div class="exb">${e.t?`<div class="ex-t">${esc(e.t)}</div>`:''}`;
+  for(let i=1;i<=n;i++){const c=cx[i];if(!c)continue;const good=ans.includes(i),mine=chosen===i;
+    h+=`<div class="ex-c ${good?'g':'r'}"><div class="ex-ch"><span class="ex-n">${NUM[i-1]}</span>${good?`<span class="ex-tag g">정답</span>`:''}${mine&&!good?`<span class="ex-tag r">내 답</span>`:''}</div><div class="ex-cb">${exMD(c)}</div></div>`}
+  if(e.body)h+=`<div class="ex-body">${exMD(e.body)}</div>`;
+  if(e.ref)h+=`<div class="ex-ref"><b>참고</b>${exMD(e.ref)}</div>`;
+  if(e.more)h+=`<div class="ex-more"><b>더 알아보기</b>${exMD(e.more)}</div>`;
+  if(q.xi)h+=`<details class="ex-orig"><summary>원본 해설 보기</summary><img class="qimg bk xi" ${lazy?'data-lsrc':'data-src'}="${esc(q.xi)}" alt="해설"></details>`;
+  return h+'</div>';
+}
 function fmt(s){
   if(s==null||s==='')return '';
   let h=esc(s);
@@ -1352,7 +1385,7 @@ PAGES.read=(key,idx)=>{
       ${(q.img?[].concat(q.img):[]).map(x=>`<img class="qimg bk" data-lsrc="${esc(x)}" alt="">`).join('')}
       <div class="rdc-x ${hide?'hid':''}" onclick="this.classList.remove('hid')">
         <div class="verdict ok rd-ans">${ic('check')}정답<span>${ans.map(a=>NUM[a-1]).join(' ')}</span></div>
-        ${q.xi?`<img class="qimg bk xi" data-lsrc="${esc(q.xi)}" alt="해설">`:''}
+        ${q.ex?exHTML(q,0,true):q.xi?`<img class="qimg bk xi" data-lsrc="${esc(q.xi)}" alt="해설">`:''}
         ${BS(q.subject)&&q.bp?`<div class="bs-row">${bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`)}</div>`:''}
         <span class="rdc-cover">정답·해설 보기</span>
       </div></section>`}).join('');
@@ -1436,7 +1469,7 @@ PAGES.quiz=sid=>{
     const ok=ans.includes(+chosen);
     const simple=LS.get(LSK.simple,false);
     h+=`<div class="verdict ${ok?'ok':'no'}">${ic(ok?'check':'x')}${ok?'정답':'오답'}<span>정답 ${ans.map(a=>NUM[a-1]).join(' ')}${ok?'':` · 내 답 ${NUM[chosen-1]}`}</span></div>
-    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.xi?`<img class="qimg bk xi" data-src="${esc(q.xi)}" alt="해설">`:''}${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],`이 단원 기본서 (${esc(codeName(c))})`):''})()}</div>`:''}${q.explain||q.xi?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
+    ${q.explain?`<div class="exp">${fmt(q.explain)}</div>`:''}${q.ex?exHTML(q,+chosen):q.xi?`<img class="qimg bk xi" data-src="${esc(q.xi)}" alt="해설">`:''}${BS(q.subject)?`<div class="bs-row">${q.bp?bsLink(q.subject,q.bp,`기본서 P.${q.bp} 펼치기`):''}${(()=>{const c=q.codes.find(c=>codeBp(c));return c?bsLink(q.subject,codeBp(c)[0],`이 단원 기본서 (${esc(codeName(c))})`):''})()}</div>`:''}${q.explain||q.xi||q.ex?'':'<div class="exp none">등록된 해설이 없습니다</div>'}
     <div class="retry-row"><button class="pill w" onclick="retryQ('${sid}')">${ic('undo')} 다시 풀기</button></div>
     ${unitHTML(chap,sec)}${tagsHTML(q)}`;
     if(q.cx&&q.cx.some(Boolean)){
@@ -2115,7 +2148,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v32 · 10월 21일';
+const APP_VER='v33 · 10월 21일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
