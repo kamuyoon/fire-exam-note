@@ -1450,7 +1450,8 @@ function unitHTML(chap,sec){
   return `<div class="unit"><a class="un" href="#group/chapter/${enc(chap)}">${esc(codeName(chap))}</a>${sec?`<a class="pill sm sky" href="#group/section/${enc(sec)}">${esc(codeName(sec))} ${ic('open')}</a>`:''}</div>`;
 }
 const tagsHTML=q=>q.keywords.length?`<div class="tags">${q.keywords.map(k=>`<a href="#group/keyword/${enc(k)}">#${esc(k)}</a>`).join('')}</div>`:'';
-AFTER.quiz=sid=>{growAll();bindSwipe(sid);preloadNear(sid);const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)hl.scrollIntoView({block:'nearest'});const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
+AFTER.quiz=sid=>{growAll();bindSwipe(sid);preloadNear(sid);
+  if(QV.toExp){QV.toExp=false;setTimeout(()=>{const v=document.querySelector('.qwrap .verdict');if(v)smoothTo(v.getBoundingClientRect().top+scrollY-110)},160)}const hl=document.querySelector('.crow.hl,.cnum .hl');if(hl&&QV.kb)hl.scrollIntoView({block:'nearest'});const c=document.querySelector('.qn.cur');if(c)c.parentNode.scrollLeft=c.offsetLeft-c.parentNode.clientWidth/2+c.clientWidth/2};
 function qbar(s){
   const last=s.idx>=s.ids.length-1;
   const main=last?(s.done?`<button class="qb main" onclick="location.hash='result/${s.id}'">결과 보기</button>`:`<button class="qb main" onclick="finishPrompt('${s.id}')">${s.mode==='exam'?'제출하기':'풀이 완료'}</button>`):`<button class="qb main" onclick="qmove('${s.id}',1)">다음</button>`;
@@ -1472,6 +1473,12 @@ function addCCheck(sid,n,d){
   chkClean(id);touch('k:'+id);s.updated=now();save();rerender();
 }
 const toggleQCheck=sid=>addQCheck(sid,1),toggleCCheck=(sid,n)=>addCCheck(sid,n,1);
+function smoothTo(y){
+  y=Math.max(0,Math.min(y,document.scrollingElement.scrollHeight-innerHeight));const y0=scrollY;if(Math.abs(y-y0)<2)return;
+  const t0=performance.now(),d=Math.min(520,180+Math.abs(y-y0)*.35);let ran=false;
+  const step=t=>{ran=true;const k=Math.min(1,(t-t0)/d),e=1-Math.pow(1-k,3);window.scrollTo(0,y0+(y-y0)*e);if(k<1)requestAnimationFrame(step)};
+  requestAnimationFrame(step);setTimeout(()=>{if(!ran)window.scrollTo(0,y)},d+150);
+}
 function preloadNear(sid){const s=S.sessions[sid];if(!s)return;[s.idx+1,s.idx-1,s.idx+2,s.idx].forEach(i=>{const q=QI[s.ids[i]];if(q)[].concat(q.img||[]).concat(q.xi?[q.xi]:[]).forEach(p=>blobImg(p).catch(()=>{}))})}
 /* 타이머 */
 const fmtT=t=>{t=Math.max(0,Math.round(t||0));const h=Math.floor(t/3600),m=Math.floor(t%3600/60),x=t%60;return (h?h+':'+String(m).padStart(2,'0'):m)+':'+String(x).padStart(2,'0')};
@@ -1529,6 +1536,7 @@ document.addEventListener('keydown',e=>{
   if(mod)return;
   if(e.key==='ArrowRight'){e.preventDefault();qmove(sid,1)}
   else if(e.key==='ArrowLeft'){e.preventDefault();if(s.idx>0)qmove(sid,-1)}
+  else if(['ArrowDown','ArrowUp','PageDown','PageUp'].includes(e.key)&&S.sessions[sid].ans[S.sessions[sid].ids[S.sessions[sid].idx]]!=null&&(S.sessions[sid].mode!=='exam'||S.sessions[sid].done)){e.preventDefault();const dn2=e.key==='ArrowDown'||e.key==='PageDown',st=e.key.startsWith('Page')?innerHeight*.8:220;smoothTo(scrollY+(dn2?st:-st))}
   else if(e.key==='ArrowDown'){e.preventDefault();QV.hl=QV.hl>=n?1:(QV.hl||0)+1;rerender()}
   else if(e.key==='ArrowUp'){e.preventDefault();QV.hl=QV.hl<=1?n:QV.hl-1;rerender()}
   else if(dg&&+dg[2]<=n){e.preventDefault();QV.hl=+dg[2];rerender()}
@@ -1539,7 +1547,7 @@ function choose(sid,n){
   if(QV.strike){s.strike=s.strike||{};const a=s.strike[id]||[];s.strike[id]=a.includes(n)?a.filter(x=>x!==n):[...a,n];save();rerender();return}
   if(s.done)return;
   if(s.mode!=='exam'){
-    if(s.ans[id]!=null)return;s.ans[id]=n;const ok=record(id,n,s.kind);
+    if(s.ans[id]!=null)return;s.ans[id]=n;const ok=record(id,n,s.kind);QV.toExp=true;
     if(ok&&s.kind==='wrong'&&!S.resolved[id])setTimeout(async()=>{
       if(await appConfirm('맞힌 문제를 오답노트에서 지울까요?\n지워도 풀이 기록은 남아요.',{title:'정답이에요!',ok:'오답노트에서 지우기',cancel:'계속 남기기'})){touch('r:'+id);S.resolved[id]=1;save();rerender()}
     },450);
