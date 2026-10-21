@@ -975,7 +975,9 @@ function render(keep){
   const g=gateState();
   document.body.classList.toggle('gated',!!g);
   if(g){v.innerHTML=gatePage(g);document.body.classList.remove('quiz-mode');PAGEDIR=0;SAMEPAGE=false;return}
-  v.innerHTML=String(PAGES[p](...parts.slice(1))).replace(/data-src="([^"]+)"/g,(m,k)=>{const u=IMGMEM[k.replace(/&amp;/g,'&')];return u?`src="${u}"`:m});
+  const keepImgs={};if(keep)v.querySelectorAll('img[data-k]').forEach(im=>{if(im.complete&&im.naturalWidth)keepImgs[im.dataset.k]=im});
+  v.innerHTML=String(PAGES[p](...parts.slice(1))).replace(/data-src="([^"]+)"/g,(m,k)=>{const u=IMGMEM[k.replace(/&amp;/g,'&')];return u?`src="${u}" data-k="${k}"`:`${m} data-k="${k}"`});
+  if(keep)v.querySelectorAll('img[data-k]').forEach(im=>{const o=keepImgs[im.dataset.k];if(o){o.className=im.className;im.replaceWith(o);delete keepImgs[im.dataset.k]}});
   if(AFTER[p])AFTER[p](...parts.slice(1));
   hydrateImgs();
   if(PAGEDIR&&!keep){
