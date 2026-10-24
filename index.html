@@ -1420,12 +1420,11 @@ PAGES.group=(type,key)=>{
     <div class="sbtns"><button class="btn" ${d} onclick="startGroup(this.dataset.t,this.dataset.k,'all')" ${qs.length?'':'disabled'}>전체 풀기<small>${qs.length}문항</small></button><button class="btn blue" ${d} onclick="startGroup(this.dataset.t,this.dataset.k,'new')" ${nNew?'':'disabled'}>안 푼 문제<small>${nNew}문항</small></button><button class="btn red" ${d} onclick="startGroup(this.dataset.t,this.dataset.k,'wrong')" ${nW?'':'disabled'}>틀린 문제<small>${nW}문항</small></button></div></div>`;
   if(type==='exam'){
     const subs=uniq(qs.map(q=>q.subject));
-    h+=`<div class="card"><h4>과목별 풀기</h4>${subs.map(s=>{const k=`${key}~${s}`,sq=groupQs('examsub',k),la=latestRate(sq);return `<div class="grow" style="padding:12px 0"><a class="gm" href="#group/examsub/${enc(k)}"><b>${esc(subjName(s))}</b><small>${sq.length}문항${la.n?` · 최근 ${la.ok}/${la.n}`:''}</small></a><a class="pill sm b" href="#omr/${enc(key)}/${s}">OMR 채점</a></div>`}).join('')}</div>`;
+    h+=`<div class="card"><h4>과목별 풀기</h4>${subs.map(s=>{const k=`${key}~${s}`,sq=groupQs('examsub',k),la=latestRate(sq);return `<div class="grow" style="padding:12px 0"><a class="gm" href="#group/examsub/${enc(k)}"><b>${esc(subjName(s))}</b><small>${sq.length}문항${la.n?` · 최근 ${la.ok}/${la.n}`:''}</small></a></div>`}).join('')}</div>`;
   }
   if(type==='bookch'){const c=key.split('~')[1],r=c&&codeBp(c),sb=c&&codeSubject(c);if(r&&BS(sb))h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[sb].basic.name)} P.${r[0]}~${r[1]} · 문제 풀기 전에 훑어보세요</p>${bsLink(sb,r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
   if(type==='chapter'||type==='section'||type==='subject'||type==='exam'||type==='examsub'){
     if((type==='chapter'||type==='section')&&!isUnc(key)&&codeBp(key)&&BS(codeSubject(key))){const r=codeBp(key);h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[codeSubject(key)].basic.name)} P.${r[0]}~${r[1]} · 문제 풀기 전에 훑어보세요</p>${bsLink(codeSubject(key),r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
-    if((type==='chapter'||type==='section')&&!isUnc(key))h+=`<div class="card"><h4>요약노트</h4><textarea class="note" data-a="${esc(key)}" oninput="setNote(this)" placeholder="이 단원에서 꼭 기억할 내용을 정리하세요">${esc(S.notes[key]||'')}</textarea></div>`;
     const lv=type==='chapter'?2:1;
     const keys=uniq(qs.flatMap(q=>lv===1?qChapters(q):qSections(q)));
     const rows=keys.map(k=>{const g=qs.filter(q=>hasCode(q,k)),ga=agg(g);return{k,g,ga}}).filter(r=>r.ga.n).sort((x,y)=>(1-y.ga.rate)-(1-x.ga.rate)||y.ga.wrong-x.ga.wrong);
@@ -1879,7 +1878,7 @@ function roundsPage(sub){
     return `<div class="rcard"><div class="rc-l"><div class="rc-t"><b>${esc(e.id)}</b><span>${rs.length?`${rs.length}회독 최근 ${rsc(rs[rs.length-1])}점`:'아직 회독 기록 없음'}</span>${tag}</div>
       <div class="stars">${rs.map((r,i)=>starSVG(i+1,rsc(r),r.n?r.ok/r.n:r.score/100)).join('')}${lv?`<span class="rc-live">${rs.length+1}회차 진행중 ${answered(lv)}/${lv.ids.length}</span>`:''}</div></div>
       <div class="rc-r"><div class="rc-btn"><button class="r" data-k="${esc(key)}" onclick="resetRound(this.dataset.k)">초기화</button><button class="g" data-k="${esc(key)}" onclick="playRound(this.dataset.k)">${lv?'이어풀기':'풀기'}</button></div>
-      <div class="rc-info">${qs.length}문항${e.cutline!=null?`<br>합격선 ${e.cutline}점`:''}<a href="#group/examsub/${enc(key)}">문항 보기</a><a href="#omr/${enc(e.id)}/${sub}">OMR 채점</a></div></div></div>`;
+      <div class="rc-info">${qs.length}문항${e.cutline!=null?`<br>합격선 ${e.cutline}점`:''}<a href="#group/examsub/${enc(key)}">문항 보기</a></div></div></div>`;
   }).join('');
 }
 function playRound(key){
@@ -2161,7 +2160,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v36 · 10월 22일';
+const APP_VER='v37 · 10월 24일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
@@ -2397,8 +2396,8 @@ PAGES.home=()=>{
   const live=liveSessions().filter(s=>s.kind!=='wrong');
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],['집중공략','#stats/focus','fire','c1'],
-    ['회독 현황','#rounds','refresh','c3'],['빈출 단원','#freq','chart','c4'],['요약노트','#summary','star','c1'],
-    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OMR 채점','#omr','check','c4'],
+    ['회독 현황','#rounds','refresh','c3'],['빈출 단원','#freq','chart','c4'],
+    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],
     ['기출 교재','#books','book','c1'],['교재 정독','#books/read','list','c2'],['기본서','#books/theory','star','c3'],
     ['랜덤 풀이','#random','refresh','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
