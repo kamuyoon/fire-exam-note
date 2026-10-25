@@ -2160,7 +2160,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v37 · 10월 24일';
+const APP_VER='v38 · 10월 25일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
@@ -2395,10 +2395,10 @@ PAGES.home=()=>{
   const [k,t]=todayQuote(),d=nextExamDate(),dd=d?Math.ceil((d-now())/864e5):null,st=todayStat(),sk=studyStreak(),dt=new Date();
   const live=liveSessions().filter(s=>s.kind!=='wrong');
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
-    ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],['집중공략','#stats/focus','fire','c1'],
-    ['회독 현황','#rounds','refresh','c3'],['빈출 단원','#freq','chart','c4'],
+    ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],
+    ['회독 현황','#rounds','refresh','c3'],
     ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],
-    ['기출 교재','#books','book','c1'],['교재 정독','#books/read','list','c2'],['기본서','#books/theory','star','c3'],
+    ['기출 교재','#books','book','c1'],['빈출 단원','#freq','chart','c2'],['기본서','#books/theory','star','c3'],
     ['랜덤 풀이','#random','refresh','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
   return `<header class="home-top">
