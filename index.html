@@ -264,6 +264,7 @@ body.quiz-mode #app{padding-bottom:calc(88px + env(safe-area-inset-bottom))}
 /* omr */
 .orow{display:flex;align-items:center;gap:8px;padding:8px 20px;border-bottom:1px solid #f0ede6}
 .orow b{width:34px;font-size:16px}
+.ox-btns{display:flex;gap:12px;margin:0 16px 12px}.ox-b{flex:1;height:84px;border-radius:18px;border:2px solid #ddd;background:#fff;font-size:40px;font-weight:800}.ox-b.o{color:#1f7ae0}.ox-b.x{color:#e0412b}.ox-b.ans{background:#eaf6ec;border-color:var(--green)}.ox-b.bad{background:#fdecea;border-color:#e0412b}.ox-b:disabled{opacity:1}
 .ob{width:40px;height:40px;border-radius:50%;border:1.5px solid #c9c3ba;background:#fff;font-size:15px}
 .ob.on{background:#2b1d1d;color:#fff;border-color:#2b1d1d}
 
@@ -752,7 +753,7 @@ function exHTML(q,chosen,lazy){
     h+=`<div class="ex-c ${good?'g':'r'}"><div class="ex-ch"><span class="ex-n">${NUM[i-1]}</span>${good?`<span class="ex-tag g">정답</span>`:''}${mine&&!good?`<span class="ex-tag r">내 답</span>`:''}</div><div class="ex-cb">${exMD(c)}</div></div>`}
   if(e.body)h+=`<div class="ex-body">${exMD(e.body)}</div>`;
   if(e.ref)h+=`<div class="ex-ref"><b>참고</b>${exMD(e.ref)}</div>`;
-  if(e.more)h+=`<div class="ex-more"><b>더 알아보기</b>${exMD(e.more)}</div>`;
+  if(e.more&&!String(e.more).startsWith('기출체크'))h+=`<div class="ex-more"><b>더 알아보기</b>${exMD(e.more)}</div>`;
   if(q.xi)h+=`<details class="ex-orig"><summary>원본 해설 보기</summary><img class="qimg bk xi" ${lazy?'data-lsrc':'data-src'}="${esc(q.xi)}" alt="해설"></details>`;
   return h+'</div>';
 }
@@ -766,8 +767,8 @@ function fmt(s){
 const plain=s=>String(s||'').replace(/\[\/?보기\]|\*\*|__/g,' ').replace(/\s+/g,' ').trim();
 
 /* ================= state ================= */
-const DEF={ink:{},nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{},qmemos:{}};
-const freshState=o=>Object.assign({},DEF,{ink:{},attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{},qmemos:{}},o||{});
+const DEF={ink:{},nickname:'',examDate:'',attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},resetAll:0,rounds:{},checks:{},qmemos:{},ox:{}};
+const freshState=o=>Object.assign({},DEF,{ink:{},attempts:{},sessions:{},notes:{},qnotes:{},memos:[],marks:{},resolved:{},mt:{},del:{},resetAt:{},rounds:{},checks:{},qmemos:{},ox:{}},o||{});
 let S=freshState(LS.get('fx_state',{}));
 const touch=k=>{S.mt[k]=now()};
 function save(){LS.set('fx_state',S);if(SB_URL&&uidOf()){clearTimeout(SYNC.timer);SYNC.timer=setTimeout(syncNow,2500)}}
@@ -799,7 +800,7 @@ function mergeState(a,b){
   [a.sessions,b.sessions].forEach(o=>Object.values(o).forEach(s=>{if(r.del[s.id]||s.updated<RA)return;const c=r.sessions[s.id];if(!c||s.updated>c.updated)r.sessions[s.id]=s}));
   const mm=new Map();[...a.memos,...b.memos].forEach(m=>{if(r.del[m.id]||m.t<RA)return;const c=mm.get(m.id);if(!c||m.t>c.t)mm.set(m.id,m)});
   r.memos=[...mm.values()].sort((x,y)=>y.t-x.t);
-  [['notes','n:'],['qnotes','q:'],['marks','m:'],['resolved','r:'],['checks','k:'],['ink','i:']].forEach(([f,p])=>{
+  [['notes','n:'],['qnotes','q:'],['marks','m:'],['resolved','r:'],['checks','k:'],['ink','i:'],['ox','o:']].forEach(([f,p])=>{
     uniq([...Object.keys(a[f]),...Object.keys(b[f])]).forEach(k=>{
       const ta=a.mt[p+k]||0,tb=b.mt[p+k]||0;if(Math.max(ta,tb)<RA)return;
       const v=ta===tb?(a[f][k]??b[f][k]):(tb>ta?b:a)[f][k];if(v!=null)r[f][k]=v;
@@ -1000,7 +1001,7 @@ function startRound(sub){
 
 /* ================= router ================= */
 const PAGES={},AFTER={};
-const TABMAP={checks:'home',home:'home',memo:'home',summary:'home',freq:'home',omr:'home',rounds:'home',toc:'settings',solve:'solve',pick:'solve',group:'solve',result:'solve',wrong:'wrong',stats:'stats',settings:'settings'};
+const TABMAP={ox:'home',checks:'home',home:'home',memo:'home',summary:'home',freq:'home',omr:'home',rounds:'home',toc:'settings',solve:'solve',pick:'solve',group:'solve',result:'solve',wrong:'wrong',stats:'stats',settings:'settings'};
 function render(keep){
   const raw=location.hash.slice(1)||'home';
   const parts=raw.split('/').map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
@@ -2072,6 +2073,51 @@ function newMemo(){const m={id:uid(),t:now(),text:''};S.memos.unshift(m);save();
 function setMemo(el){const m=S.memos.find(x=>x.id===el.dataset.a);if(m){m.text=el.value;m.t=now();save()}}
 function delMemo(id){S.del[id]=now();S.memos=S.memos.filter(m=>m.id!==id);save();location.hash='memo'}
 
+/* ================= OX ================= */
+let OXP=null,OXPN=-1,OXS=null;
+const oxKey=t=>{let h=5381;for(let i=0;i<t.length;i++)h=((h*33)^t.charCodeAt(i))>>>0;return h.toString(36)};
+function oxPool(){
+  if(OXP&&OXPN===Q)return OXP;
+  const m=new Map();
+  Q.forEach(q=>(q.ox||[]).forEach(o=>{const k=oxKey(o.s);if(!m.has(k))m.set(k,{k,s:o.s,a:o.a,y:o.y,q:q.id,sub:q.subject,ch:qSections(q)[0]||qChapters(q)[0]})}));
+  OXP=[...m.values()];OXPN=Q;return OXP;
+}
+const oxSt=k=>S.ox[k];
+const oxFilter=(it,f)=>f==='new'?it.filter(x=>!oxSt(x.k)):f==='wrong'?it.filter(x=>oxSt(x.k)&&!oxSt(x.k).ok):it;
+PAGES.ox=(sub='',a='')=>{
+  if(sub==='run')return oxRun();
+  let h=hero(topBar('OX 문풀')+subjPills(sub,k=>`#ox/${k}`),'slim');
+  const pool=oxPool().filter(x=>!sub||x.sub===sub);
+  if(!pool.length)return h+'<p class="empty">OX 문제가 없습니다</p>';
+  const cnt=it=>{const d=it.filter(x=>oxSt(x.k)).length,w=it.filter(x=>oxSt(x.k)&&!oxSt(x.k).ok).length;return{n:it.length,d,w}};
+  const c=cnt(pool);
+  h+=intro('기출 OX','교재 기출체크 지문을 O/X로 빠르게 풀어봅니다.',`${c.n}문항 · 푼 ${c.d} · 틀린 ${c.w}`)
+    +`<div class="card"><div class="row-btns" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" style="flex:1" onclick="oxStart('${sub}','','all')">전체 랜덤</button><button class="btn" style="flex:1" onclick="oxStart('${sub}','','new')">안 푼 것</button><button class="btn" style="flex:1" onclick="oxStart('${sub}','','wrong')">틀린 것</button></div></div>`;
+  const chs=uniq(pool.map(x=>x.ch)).sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  h+=`<div class="subhead">단원별</div>`+chs.map(ch=>{const it=pool.filter(x=>x.ch===ch),cc=cnt(it);
+    return `<div class="card ox-ch"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b>${esc(groupName('chapter',ch))}</b><br><small class="muted">${cc.n}문항 · 푼 ${cc.d}${cc.w?` · 틀린 ${cc.w}`:''}</small></div><button class="pill sm" onclick="oxStart('${sub}','${esc(ch)}','all')">풀기</button>${cc.w?`<button class="pill sm r" onclick="oxStart('${sub}','${esc(ch)}','wrong')">틀린 것</button>`:''}</div></div>`}).join('');
+  return h;
+};
+function oxStart(sub,ch,f){
+  let it=oxPool().filter(x=>(!sub||x.sub===sub)&&(!ch||x.ch===ch));
+  it=oxFilter(it,f);
+  if(!it.length){appAlert('해당하는 문제가 없습니다');return}
+  OXS={items:shuffle([...it]),i:0,ok:0,n:0,picked:null,back:'#ox/'+sub};
+  location.hash='ox/run';
+}
+function oxRun(){
+  if(!OXS)return hero(topBar('OX 문풀',{backHref:'#ox'}),'slim')+'<p class="empty">진행 중인 OX가 없습니다</p>';
+  const S2=OXS,top=hero(topBar(`OX ${Math.min(S2.i+1,S2.items.length)} / ${S2.items.length}`,{backHref:S2.back}),'slim');
+  if(S2.i>=S2.items.length)return top+`<div class="card" style="text-align:center"><h4>완료</h4><p style="font-size:28px;font-weight:800;margin:10px 0">${S2.ok} / ${S2.n}</p><button class="btn full" onclick="location.hash='${S2.back.slice(1)}'">목록으로</button></div>`;
+  const x=S2.items[S2.i],p=S2.picked,done=p!=null,right=done&&(p===x.a);
+  return top+`<div class="card ox-q"><div class="muted" style="font-size:13px;margin-bottom:8px">${esc(groupName('chapter',x.ch))}${x.y?` · ${esc(x.y)}`:''}</div><p style="font-size:17px;line-height:1.65;margin:0">${esc(x.s)}</p></div>
+  <div class="ox-btns"><button class="ox-b o ${done&&x.a===1?'ans':''} ${done&&p===1&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(1)">O</button><button class="ox-b x ${done&&x.a===0?'ans':''} ${done&&p===0&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(0)">X</button></div>
+  ${done?`<div class="card" style="text-align:center"><b style="font-size:18px;color:${right?'var(--green)':'#d33'}">${right?'정답':'오답'} · 답 ${x.a?'O':'X'}</b><div style="display:flex;gap:8px;margin-top:12px"><button class="pill sm" style="flex:1;justify-content:center" onclick="oxSrc('${x.q}')">원 문제·해설</button><button class="btn" style="flex:1" onclick="oxNext()">다음</button></div></div>`:''}`;
+}
+function oxPick(a){const x=OXS.items[OXS.i];if(OXS.picked!=null)return;OXS.picked=a;const ok=a===x.a;OXS.n++;if(ok)OXS.ok++;S.ox[x.k]={ok,t:now()};touch('o:'+x.k);save();rerender()}
+function oxNext(){OXS.i++;OXS.picked=null;rerender();scrollTo(0,0)}
+function oxSrc(id){startSession('ox',id,'OX 원문제',[id],{temp:true})}
+
 /* ================= OMR ================= */
 let OMR={},OMRK='';
 PAGES.omr=(eid,sub)=>{
@@ -2160,7 +2206,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v38 · 10월 25일';
+const APP_VER='v39 · 10월 25일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
@@ -2397,7 +2443,7 @@ PAGES.home=()=>{
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],
     ['회독 현황','#rounds','refresh','c3'],
-    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],
+    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OX 문풀','#ox','check','c4'],
     ['기출 교재','#books','book','c1'],['빈출 단원','#freq','chart','c2'],['기본서','#books/theory','star','c3'],
     ['랜덤 풀이','#random','refresh','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
