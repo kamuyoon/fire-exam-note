@@ -2107,8 +2107,8 @@ function oxStart(sub,ch,f){
 }
 function oxRun(){
   if(!OXS)return hero(topBar('OX 문풀',{backHref:'#ox'}),'slim')+'<p class="empty">진행 중인 OX가 없습니다</p>';
-  const S2=OXS,top=hero(topBar(`OX ${Math.min(S2.i+1,S2.items.length)} / ${S2.items.length}`,{backHref:S2.back}),'slim');
-  if(S2.i>=S2.items.length)return top+`<div class="card" style="text-align:center"><h4>완료</h4><p style="font-size:28px;font-weight:800;margin:10px 0">${S2.ok} / ${S2.n}</p><button class="btn full" onclick="location.hash='${S2.back.slice(1)}'">목록으로</button></div>`;
+  const S2=OXS,top=hero(topBar(`OX ${Math.min(S2.i+1,S2.items.length)} / ${S2.items.length}`),'slim');
+  if(S2.i>=S2.items.length)return top+`<div class="card" style="text-align:center"><h4>완료</h4><p style="font-size:28px;font-weight:800;margin:10px 0">${S2.ok} / ${S2.n}</p><button class="btn full" onclick="goBack()">목록으로</button></div>`;
   const x=S2.items[S2.i],p=S2.picked,done=p!=null,right=done&&(p===x.a);
   return top+`<div class="card ox-q"><div class="muted" style="font-size:13px;margin-bottom:8px">${esc(groupName('chapter',x.ch))}${x.y?` · ${esc(x.y)}`:''}</div><p style="font-size:17px;line-height:1.65;margin:0">${esc(x.s)}</p></div>
   <div class="ox-btns"><button class="ox-b o ${done&&x.a===1?'ans':''} ${done&&p===1&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(1)">O</button><button class="ox-b x ${done&&x.a===0?'ans':''} ${done&&p===0&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(0)">X</button></div>
@@ -2206,7 +2206,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v39 · 10월 25일';
+const APP_VER='v40 · 10월 26일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
@@ -2444,7 +2444,7 @@ PAGES.home=()=>{
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],
     ['회독 현황','#rounds','refresh','c3'],
     ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OX 문풀','#ox','check','c4'],
-    ['기출 교재','#books','book','c1'],['빈출 단원','#freq','chart','c2'],['기본서','#books/theory','star','c3'],
+    ['기출 교재','#books','book','c1'],['기본서','#books/theory','star','c3'],
     ['랜덤 풀이','#random','refresh','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
   return `<header class="home-top">
