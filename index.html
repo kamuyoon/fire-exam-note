@@ -2129,7 +2129,7 @@ function oxRun(){
   const x=S2.items[S2.i],p=S2.picked,done=p!=null,right=done&&(p===x.a);
   return top+`<div class="card ox-q"><div class="muted" style="font-size:13px;margin-bottom:8px">${esc(x.chn||groupName('chapter',x.ch))}${x.y?` · ${esc(x.y)}`:''}</div><p style="font-size:17px;line-height:1.65;margin:0">${esc(x.s)}</p>${x.img?`<details class="sox-orig"><summary>원문 이미지</summary><div class="sox-b" onclick="this.classList.toggle('big')"><img class="qimg bk" data-src="${esc(x.img)}" alt="원문"></div></details>`:''}</div>
   <div class="ox-btns"><button class="ox-b o ${done&&x.a===1?'ans':''} ${done&&p===1&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(1)">O</button><button class="ox-b x ${done&&x.a===0?'ans':''} ${done&&p===0&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(0)">X</button></div>
-  ${done?`<div class="card" style="text-align:center"><b style="font-size:18px;color:${right?'var(--green)':'#d33'}">${right?'정답':'오답'} · 답 ${x.a?'O':'X'}</b>${x.b?`<div class="sox-ex"><div class="muted" style="font-size:13px;margin:12px 0 6px;text-align:left">해설 · 핵심 근거</div><div class="sox-b" onclick="this.classList.toggle('big')">${x.b.map(b=>`<img class="qimg bk" data-src="${esc(b)}" alt="근거">`).join('')}</div><div class="muted" style="font-size:12px;text-align:left;margin-top:4px">근거 이미지를 탭하면 크게 보입니다</div>${x.code&&codeBp(x.code)&&BS('AL')?`<div class="bs-row">${bsLink('AL',codeBp(x.code)[0],`이 단원 기본서 (${esc(codeName(x.code))})`)}</div>`:''}</div>`:''}<div style="display:flex;gap:8px;margin-top:12px">${x.q?`<button class="pill sm" style="flex:1;justify-content:center" onclick="oxSrc('${x.q}')">원 문제·해설</button>`:''}<button class="btn" style="flex:1" onclick="oxNext()">다음</button></div></div>`:''}`;
+  ${done?`<div class="card" style="text-align:center"><b style="font-size:18px;color:${right?'var(--green)':'#d33'}">${right?'정답':'오답'} · 답 ${x.a?'O':'X'}</b>${x.b?`<div class="sox-ex"><div class="muted" style="font-size:13px;margin:12px 0 6px;text-align:left">해설 · 핵심 근거</div>${x.bt?`<div class="exp" style="text-align:left">${fmt(x.bt)}</div>`:''}<details class="sox-orig" style="text-align:left"><summary>근거 원문 이미지</summary><div class="sox-b" onclick="this.classList.toggle('big')">${x.b.map(b=>`<img class="qimg bk" data-src="${esc(b)}" alt="근거">`).join('')}</div></details>${x.code&&codeBp(x.code)&&BS('AL')?`<div class="bs-row">${bsLink('AL',codeBp(x.code)[0],`이 단원 기본서 (${esc(codeName(x.code))})`)}</div>`:''}</div>`:''}<div style="display:flex;gap:8px;margin-top:12px">${x.q?`<button class="pill sm" style="flex:1;justify-content:center" onclick="oxSrc('${x.q}')">원 문제·해설</button>`:''}<button class="btn" style="flex:1" onclick="oxNext()">다음</button></div></div>`:''}`;
 }
 function oxPick(a){const x=OXS.items[OXS.i];if(OXS.picked!=null)return;OXS.picked=a;const ok=a===x.a;OXS.n++;if(ok)OXS.ok++;S.ox[x.k]={ok,t:now()};touch('o:'+x.k);save();rerender()}
 function oxNext(){OXS.i++;OXS.picked=null;rerender();scrollTo(0,0)}
@@ -2139,7 +2139,7 @@ function oxSrc(id){startSession('ox',id,'OX 원문제',[id],{temp:true})}
 let SOXP=null,SOXD=null;
 function soxPool(){
   if(SOXP&&SOXD===D.sox)return SOXP;
-  SOXP=[];(D.sox||[]).forEach(t=>(t.items||[]).forEach((it,j)=>SOXP.push({k:'sox:'+it.i,img:it.i,s:it.t,a:it.a,y:it.y,b:t.b,code:t.code,ch:t.code,chn:`제${t.lec}강 · ${codeName(t.code).replace(/^제\d+강\s*/,'')} · ${String(t.no).padStart(3,'0')}-${j+1}`,no:t.no})));
+  SOXP=[];(D.sox||[]).forEach(t=>(t.items||[]).forEach((it,j)=>SOXP.push({k:'sox:'+it.i,img:it.i,s:it.t,a:it.a,y:it.y,b:t.b,bt:t.bt,code:t.code,ch:t.code,chn:`제${t.lec}강 · ${codeName(t.code).replace(/^제\d+강\s*/,'')} · ${String(t.no).padStart(3,'0')}-${j+1}`,no:t.no})));
   SOXD=D.sox;return SOXP;
 }
 PAGES.sox=()=>{
@@ -2251,7 +2251,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v43 · 11월 17일';
+const APP_VER='v44 · 11월 17일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
