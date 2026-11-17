@@ -908,7 +908,7 @@ function buildData(){
   const base=window.EXAM_DATA||{};const user=LS.get('fx_data',{});
   D={subjects:mergeBy(base.subjects||[],user.subjects||[],'id'),
      exams:mergeBy(base.exams||[],user.exams||[],'id').filter(e=>!(user.hidden||[]).includes(e.id)),
-     schedule:(user.schedule&&user.schedule.length?user.schedule:base.schedule)||[]};
+     schedule:(user.schedule&&user.schedule.length?user.schedule:base.schedule)||[],sox:base.sox||[]};
   Q=[];QI={};SUBJ={};CODE={};EXAM={};EXN={};
   D.subjects.forEach(s=>{SUBJ[s.id]=s;(function walk(list,parent,lv){(list||[]).forEach(n=>{CODE[n.code]={code:n.code,name:n.name,subject:s.id,parent,level:lv,bp:n.bp};walk(n.children,n.code,lv+1)})})(s.toc,null,1)});
   D.exams.sort((a,b)=>String(b.date||'').localeCompare(String(a.date||'')));
@@ -1001,7 +1001,7 @@ function startRound(sub){
 
 /* ================= router ================= */
 const PAGES={},AFTER={};
-const TABMAP={ox:'home',checks:'home',home:'home',memo:'home',summary:'home',freq:'home',omr:'home',rounds:'home',toc:'settings',solve:'solve',pick:'solve',group:'solve',result:'solve',wrong:'wrong',stats:'stats',settings:'settings'};
+const TABMAP={sox:'home',ox:'home',checks:'home',home:'home',memo:'home',summary:'home',freq:'home',omr:'home',rounds:'home',toc:'settings',solve:'solve',pick:'solve',group:'solve',result:'solve',wrong:'wrong',stats:'stats',settings:'settings'};
 function render(keep){
   const raw=location.hash.slice(1)||'home';
   const parts=raw.split('/').map(x=>{try{return decodeURIComponent(x)}catch(e){return x}});
@@ -1186,8 +1186,10 @@ function startMock(){
 
 /* ================= 기본서 ================= */
 const BS=(sub)=>SUBJ[sub]?.basic;
+const bsP=(sub,pg)=>{const v=BS(sub)?.v2;return v&&pg>=v.start?`2권 P.${pg-v.off}`:`P.${pg}`};
+const bsR=(sub,r)=>{const v=BS(sub)?.v2;return v&&r[0]>=v.start?`2권 P.${r[0]-v.off}~${r[1]-v.off}`:`P.${r[0]}~${r[1]}`};
 const bsKey=(b,pg)=>`${b.prefix}${String(pg).padStart(3,'0')}.webp`;
-function bsLink(sub,pg,label,cls='pill w sm'){const b=BS(sub);if(!b||!pg)return '';pg=Math.min(b.last,Math.max(b.first,+pg));return `<a class="${cls}" href="#basic/${sub}/${pg}">${ic('book')} ${label||`기본서 P.${pg}`}</a>`}
+function bsLink(sub,pg,label,cls='pill w sm'){const b=BS(sub);if(!b||!pg)return '';pg=Math.min(b.last,Math.max(b.first,+pg));return `<a class="${cls}" href="#basic/${sub}/${pg}">${ic('book')} ${label||`기본서 ${bsP(sub,pg)}`}</a>`}
 function codeBp(c){for(let x=c,g=0;x&&g<6;x=parentOf(x),g++)if(CODE[x]?.bp)return CODE[x].bp;return null}
 function bsCodeOf(sub,pg){const s=SUBJ[sub];let r=null;(s?.toc||[]).forEach(c=>(c.children||[]).forEach(x=>{if(x.bp&&pg>=x.bp[0]&&pg<=x.bp[1])r=[c,x]}));return r}
 const BSV={zoom:false};
@@ -1195,7 +1197,7 @@ PAGES.basic=(sub,pg)=>{
   const b=BS(sub);if(!b)return hero(topBar('기본서'),'slim')+'<p class="empty">기본서가 없습니다</p>';
   pg=Math.min(b.last,Math.max(b.first,+pg||b.first));
   const loc=bsCodeOf(sub,pg);
-  let h=hero(topBar(`${esc(b.name)}`)+`<div class="gcap">P.${pg}${loc?` · ${esc(loc[0].name)} › ${esc(loc[1].name)}`:''}</div>`,'slim');
+  let h=hero(topBar(`${esc(b.name)}`)+`<div class="gcap">${bsP(sub,pg)}${loc?` · ${esc(loc[0].name)} › ${esc(loc[1].name)}`:''}</div>`,'slim');
   h+=`<div class="bsv ${BSV.zoom?'zoom':''}" id="bsv"><div class="bswrap"><img class="bsimg" data-src="${bsKey(b,pg)}" alt="기본서 ${pg}쪽"><canvas class="ink" id="inkc"></canvas></div></div>
     <p class="muted bs-tip">애플펜슬로 바로 필기 · 손가락으로 옆으로 밀면 쪽 넘김 · 손가락 두 번 탭하면 확대</p>
     ${inkBar()}
@@ -1347,10 +1349,10 @@ PAGES.sbook=(sub,tab='solve')=>{
     const b=BS(sub);
     h+=intro(b.name,'단원을 누르면 기본서 해당 쪽부터 펼쳐져요');
     (s.toc||[]).forEach(c=>{
-      h+=`<div class="subhead bs-sub"><span>${partLbl(sub,c)} ${esc(c.name)}</span>${c.bp?`<small class="muted">P.${c.bp[0]}~${c.bp[1]}</small>`:''}</div>`;
+      h+=`<div class="subhead bs-sub"><span>${partLbl(sub,c)} ${esc(c.name)}</span>${c.bp?`<small class="muted">${bsR(sub,c.bp)}</small>`:''}</div>`;
       const ch=(c.children||[]).filter(x=>x.bp);
-      if(ch.length)h+=ch.map(x=>`<a class="grow lv2" href="#basic/${sub}/${x.bp[0]}"><div class="gm"><b>${esc(x.name)}</b><small>기본서 P.${x.bp[0]}~${x.bp[1]}</small></div><span class="gbadge">펼치기</span></a>`).join('');
-      else if(c.bp)h+=`<a class="grow lv2" href="#basic/${sub}/${c.bp[0]}"><div class="gm"><b>${esc(c.name)}</b><small>기본서 P.${c.bp[0]}~${c.bp[1]}</small></div><span class="gbadge">펼치기</span></a>`;
+      if(ch.length)h+=ch.map(x=>`<a class="grow lv2" href="#basic/${sub}/${x.bp[0]}"><div class="gm"><b>${esc(x.name)}</b><small>기본서 ${bsR(sub,x.bp)}</small></div><span class="gbadge">펼치기</span></a>`).join('');
+      else if(c.bp)h+=`<a class="grow lv2" href="#basic/${sub}/${c.bp[0]}"><div class="gm"><b>${esc(c.name)}</b><small>기본서 ${bsR(sub,c.bp)}</small></div><span class="gbadge">펼치기</span></a>`;
       else h+=`<p class="muted" style="margin:0 24px 10px;font-size:13px">이 단원은 기본서 파일이 없어요</p>`;
     });
     return h;
@@ -1366,7 +1368,7 @@ PAGES.sbook=(sub,tab='solve')=>{
     h+=row('','전체 단원',all,'');
     (s.toc||[]).forEach(c=>{
       const cq=groupQs('bookch',`${e.id}~${c.code}`);if(!cq.length)return;
-      h+=`<div class="subhead bs-sub"><span>${partLbl(sub,c)} ${esc(c.name)}</span>${c.bp&&!read?bsLink(sub,c.bp[0],`기본서 P.${c.bp[0]}~`,'bs-mini'):''}</div>`;
+      h+=`<div class="subhead bs-sub"><span>${partLbl(sub,c)} ${esc(c.name)}</span>${c.bp&&!read?bsLink(sub,c.bp[0],`기본서 ${bsP(sub,c.bp[0])}~`,'bs-mini'):''}</div>`;
       (c.children||[]).forEach(x=>{const qs=groupQs('bookch',`${e.id}~${x.code}`);if(qs.length)h+=row(x.code,esc(x.name),qs,'lv2')});
     });
   });
@@ -1423,9 +1425,9 @@ PAGES.group=(type,key)=>{
     const subs=uniq(qs.map(q=>q.subject));
     h+=`<div class="card"><h4>과목별 풀기</h4>${subs.map(s=>{const k=`${key}~${s}`,sq=groupQs('examsub',k),la=latestRate(sq);return `<div class="grow" style="padding:12px 0"><a class="gm" href="#group/examsub/${enc(k)}"><b>${esc(subjName(s))}</b><small>${sq.length}문항${la.n?` · 최근 ${la.ok}/${la.n}`:''}</small></a></div>`}).join('')}</div>`;
   }
-  if(type==='bookch'){const c=key.split('~')[1],r=c&&codeBp(c),sb=c&&codeSubject(c);if(r&&BS(sb))h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[sb].basic.name)} P.${r[0]}~${r[1]} · 문제 풀기 전에 훑어보세요</p>${bsLink(sb,r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
+  if(type==='bookch'){const c=key.split('~')[1],r=c&&codeBp(c),sb=c&&codeSubject(c);if(r&&BS(sb))h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[sb].basic.name)} ${bsR(sb,r)} · 문제 풀기 전에 훑어보세요</p>${bsLink(sb,r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
   if(type==='chapter'||type==='section'||type==='subject'||type==='exam'||type==='examsub'){
-    if((type==='chapter'||type==='section')&&!isUnc(key)&&codeBp(key)&&BS(codeSubject(key))){const r=codeBp(key);h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[codeSubject(key)].basic.name)} P.${r[0]}~${r[1]} · 문제 풀기 전에 훑어보세요</p>${bsLink(codeSubject(key),r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
+    if((type==='chapter'||type==='section')&&!isUnc(key)&&codeBp(key)&&BS(codeSubject(key))){const r=codeBp(key);h+=`<div class="card"><h4>기본서</h4><p class="muted" style="margin:0 0 12px;font-size:14px">${esc(SUBJ[codeSubject(key)].basic.name)} ${bsR(codeSubject(key),r)} · 문제 풀기 전에 훑어보세요</p>${bsLink(codeSubject(key),r[0],'이 단원 기본서 펼치기','pill b')}</div>`}
     const lv=type==='chapter'?2:1;
     const keys=uniq(qs.flatMap(q=>lv===1?qChapters(q):qSections(q)));
     const rows=keys.map(k=>{const g=qs.filter(q=>hasCode(q,k)),ga=agg(g);return{k,g,ga}}).filter(r=>r.ga.n).sort((x,y)=>(1-y.ga.rate)-(1-x.ga.rate)||y.ga.wrong-x.ga.wrong);
@@ -2122,16 +2124,44 @@ function oxStart(sub,ch,f){
 }
 function oxRun(){
   if(!OXS)return hero(topBar('OX 문풀',{backHref:'#ox'}),'slim')+'<p class="empty">진행 중인 OX가 없습니다</p>';
-  const S2=OXS,top=hero(topBar(`OX ${Math.min(S2.i+1,S2.items.length)} / ${S2.items.length}`),'slim');
+  const S2=OXS,top=hero(topBar(`OX ${Math.min(S2.i+1,S2.items.length)} / ${S2.items.length}`,{backHref:S2.back}),'slim');
   if(S2.i>=S2.items.length)return top+`<div class="card" style="text-align:center"><h4>완료</h4><p style="font-size:28px;font-weight:800;margin:10px 0">${S2.ok} / ${S2.n}</p><button class="btn full" onclick="goBack()">목록으로</button></div>`;
   const x=S2.items[S2.i],p=S2.picked,done=p!=null,right=done&&(p===x.a);
-  return top+`<div class="card ox-q"><div class="muted" style="font-size:13px;margin-bottom:8px">${esc(groupName('chapter',x.ch))}${x.y?` · ${esc(x.y)}`:''}</div><p style="font-size:17px;line-height:1.65;margin:0">${esc(x.s)}</p></div>
+  return top+`<div class="card ox-q"><div class="muted" style="font-size:13px;margin-bottom:8px">${esc(x.chn||groupName('chapter',x.ch))}${x.y?` · ${esc(x.y)}`:''}</div>${x.img?`<img class="qimg bk" data-src="${esc(x.img)}" alt="${esc(x.s||'')}">`:`<p style="font-size:17px;line-height:1.65;margin:0">${esc(x.s)}</p>`}</div>
   <div class="ox-btns"><button class="ox-b o ${done&&x.a===1?'ans':''} ${done&&p===1&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(1)">O</button><button class="ox-b x ${done&&x.a===0?'ans':''} ${done&&p===0&&!right?'bad':''}" ${done?'disabled':''} onclick="oxPick(0)">X</button></div>
-  ${done?`<div class="card" style="text-align:center"><b style="font-size:18px;color:${right?'var(--green)':'#d33'}">${right?'정답':'오답'} · 답 ${x.a?'O':'X'}</b><div style="display:flex;gap:8px;margin-top:12px"><button class="pill sm" style="flex:1;justify-content:center" onclick="oxSrc('${x.q}')">원 문제·해설</button><button class="btn" style="flex:1" onclick="oxNext()">다음</button></div></div>`:''}`;
+  ${done?`<div class="card" style="text-align:center"><b style="font-size:18px;color:${right?'var(--green)':'#d33'}">${right?'정답':'오답'} · 답 ${x.a?'O':'X'}</b>${x.b?`<div class="sox-ex"><div class="muted" style="font-size:13px;margin:12px 0 6px;text-align:left">해설 · 핵심 근거</div>${x.b.map(b=>`<img class="qimg bk" data-src="${esc(b)}" alt="근거">`).join('')}${x.code&&codeBp(x.code)&&BS('AL')?`<div class="bs-row">${bsLink('AL',codeBp(x.code)[0],`이 단원 기본서 (${esc(codeName(x.code))})`)}</div>`:''}</div>`:''}<div style="display:flex;gap:8px;margin-top:12px">${x.q?`<button class="pill sm" style="flex:1;justify-content:center" onclick="oxSrc('${x.q}')">원 문제·해설</button>`:''}<button class="btn" style="flex:1" onclick="oxNext()">다음</button></div></div>`:''}`;
 }
 function oxPick(a){const x=OXS.items[OXS.i];if(OXS.picked!=null)return;OXS.picked=a;const ok=a===x.a;OXS.n++;if(ok)OXS.ok++;S.ox[x.k]={ok,t:now()};touch('o:'+x.k);save();rerender()}
 function oxNext(){OXS.i++;OXS.picked=null;rerender();scrollTo(0,0)}
 function oxSrc(id){startSession('ox',id,'OX 원문제',[id],{temp:true})}
+
+/* ================= 소방 행법 OX ================= */
+let SOXP=null,SOXD=null;
+function soxPool(){
+  if(SOXP&&SOXD===D.sox)return SOXP;
+  SOXP=[];(D.sox||[]).forEach(t=>(t.items||[]).forEach((it,j)=>SOXP.push({k:'sox:'+it.i,img:it.i,s:it.t,a:it.a,y:it.y,b:t.b,code:t.code,ch:t.code,chn:`제${t.lec}강 · ${codeName(t.code).replace(/^제\d+강\s*/,'')} · ${String(t.no).padStart(3,'0')}-${j+1}`,no:t.no})));
+  SOXD=D.sox;return SOXP;
+}
+PAGES.sox=()=>{
+  let h=hero(topBar('소방 행법 OX'),'slim');
+  const pool=soxPool();
+  if(!pool.length)return h+'<p class="empty">소방 행법 OX 문제가 없습니다</p>';
+  const cnt=it=>{const d=it.filter(x=>oxSt(x.k)).length,w=it.filter(x=>oxSt(x.k)&&!oxSt(x.k).ok).length;return{n:it.length,d,w}};
+  const c=cnt(pool);
+  h+=intro('소방청 빈출 OX','소방 공채·간부·승진 행정법 기출 지문 · 풀고 나면 핵심 근거가 해설로 나옵니다',`${c.n}지문 · 푼 ${c.d} · 틀린 ${c.w}`)
+    +`<div class="card"><div class="row-btns" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" style="flex:1" onclick="soxStart('','all',1)">순서대로</button><button class="btn" style="flex:1" onclick="soxStart('','all')">전체 랜덤</button><button class="btn" style="flex:1" onclick="soxStart('','new')">안 푼 것</button><button class="btn" style="flex:1" onclick="soxStart('','wrong')">틀린 것</button></div></div>`;
+  const chs=uniq(pool.map(x=>x.ch));
+  h+=`<div class="subhead">강별</div>`+chs.map(ch=>{const it=pool.filter(x=>x.ch===ch),cc=cnt(it);
+    return `<div class="card ox-ch"><div style="display:flex;align-items:center;gap:10px"><div style="flex:1"><b>${esc(codeName(ch))}</b><br><small class="muted">${cc.n}지문 · 푼 ${cc.d}${cc.w?` · 틀린 ${cc.w}`:''}</small></div><button class="pill sm" onclick="soxStart('${esc(ch)}','all',1)">풀기</button>${cc.w?`<button class="pill sm r" onclick="soxStart('${esc(ch)}','wrong',1)">틀린 것</button>`:''}</div></div>`}).join('');
+  return h;
+};
+function soxStart(ch,f,ord){
+  let it=soxPool().filter(x=>!ch||x.ch===ch);
+  it=oxFilter(it,f);
+  if(!it.length){appAlert('해당하는 문제가 없습니다');return}
+  OXS={items:ord?[...it]:shuffle([...it]),i:0,ok:0,n:0,picked:null,back:'#sox'};
+  location.hash='ox/run';
+}
 
 /* ================= OMR ================= */
 let OMR={},OMRK='';
@@ -2221,7 +2251,7 @@ function installCard(compact){
     :'브라우저 메뉴(⋮) → <b>앱 설치</b> 또는 <b>홈 화면에 추가</b>';
   return `<div class="card inst"><div class="inst-row"><img src="icon-192.png" alt=""><div><b>폰에 앱으로 설치</b><small>홈 화면 아이콘으로 바로 실행 · 오프라인 풀이 가능</small></div><button class="pill" onclick="doInstall()">설치</button></div><p id="instguide" class="inst-guide" ${INSTALL?'hidden':''}>${guide}</p></div>`;
 }
-const APP_VER='v41 · 10월 27일';
+const APP_VER='v42 · 11월 17일';
 /* 최신 버전 확인: 서버 version.json과 다르면 캐시 비우고 새로 불러옴(한 번만) */
 async function verCheck(){
   try{
@@ -2458,7 +2488,7 @@ PAGES.home=()=>{
   const SC=[['회차별 풀이','#pick/exam','one','c1'],['과목별 풀이','#pick/subject','timer','c2'],['단원별 풀이','#pick/chapter','cat','c3'],
     ['키워드 풀이','#pick/keyword','key','c4'],['오답노트','#wrong','book','c2'],
     ['회독 현황','#rounds','refresh','c3'],
-    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OX 문풀','#ox','check','c4'],
+    ['체크 문제','#checks','ok','c2'],['메모장','#memo','list','c3'],['OX 문풀','#ox','check','c4'],['소방 행법 OX','#sox','fire','c1'],
     ['기출 교재','#books','book','c1'],['기본서','#books/theory','star','c3'],
     ['랜덤 풀이','#random','refresh','c4']];
   const sch=(D.schedule||[]).filter(s=>s.name);
